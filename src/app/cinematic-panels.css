@@ -77,22 +77,31 @@
 .product-grid {
   display: grid;
   grid-template-columns: 1.05fr 0.9fr 1.08fr;
-  gap: clamp(14px, 2vw, 24px);
+  gap: clamp(20px, 4.2vw, 72px);
   align-items: end;
 }
 
 .scent-card {
   --accent-rgb: 157 114 255;
+  position: relative;
   display: grid;
-  min-height: clamp(360px, 44vw, 520px);
-  align-content: end;
-  padding: clamp(22px, 3vw, 38px);
-  border: 1px solid rgba(var(--accent-rgb), 0.24);
-  background:
-    linear-gradient(180deg, rgba(var(--accent-rgb), 0.16), transparent 42%),
-    rgba(13, 7, 18, 0.56);
-  box-shadow: inset 0 1px 0 rgba(247, 242, 255, 0.08);
-  transition: transform 620ms var(--ease-out-quint), border-color 620ms var(--ease-out-quint), background 620ms var(--ease-out-quint);
+  min-height: clamp(560px, 52vw, 740px);
+  align-content: stretch;
+  overflow: visible;
+  padding: clamp(10px, 1.4vw, 18px);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  transition: transform 620ms var(--ease-out-quint);
+}
+
+.scent-card::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  pointer-events: none;
+  background: radial-gradient(70% 36% at 50% 30%, rgba(var(--accent-rgb), 0.11), transparent 72%);
+  opacity: 0.46;
 }
 
 .scent-card:nth-child(2) {
@@ -101,21 +110,109 @@
 
 .scent-card:hover {
   transform: translate3d(0, -12px, 0);
-  border-color: rgba(var(--accent-rgb), 0.62);
-  background:
-    linear-gradient(180deg, rgba(var(--accent-rgb), 0.24), transparent 48%),
-    rgba(18, 9, 26, 0.72);
 }
 
 .scent-card:nth-child(2):hover {
   transform: translate3d(0, calc(-8vh - 12px), 0);
 }
 
+.composition-model {
+  position: relative;
+  z-index: 1;
+  min-height: clamp(360px, 31vw, 500px);
+  margin: clamp(6px, 1vw, 14px) 0 clamp(18px, 2vw, 32px);
+}
+
+.composition-model::before,
+.composition-model::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  border-radius: 999px;
+}
+
+.composition-model::before {
+  left: 50%;
+  bottom: 4%;
+  width: 72%;
+  height: 18%;
+  transform: translate3d(-50%, 0, 0) rotate(-6deg);
+  background: radial-gradient(ellipse, rgba(var(--accent-rgb), 0.28), transparent 68%);
+  filter: blur(18px);
+  opacity: 0.78;
+}
+
+.composition-model::after {
+  left: 4%;
+  right: 4%;
+  bottom: 4%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), 0.42), transparent);
+  opacity: 0.62;
+}
+
+.composition-model-canvas {
+  position: absolute;
+  inset: clamp(-82px, -5vw, -34px) clamp(-70px, -4vw, -24px) clamp(-48px, -3vw, -18px);
+  z-index: 2;
+  cursor: grab;
+}
+
+.composition-model-canvas:active {
+  cursor: grabbing;
+}
+
+.composition-model-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.model-fallback {
+  position: absolute;
+  left: 4px;
+  top: 84px;
+  z-index: 1;
+  transform: scale(0.9);
+  transform-origin: top left;
+  opacity: 1;
+  transition: opacity 620ms var(--ease-out-quint), transform 620ms var(--ease-out-quint);
+}
+
+.model-fallback.is-hidden {
+  opacity: 0;
+  transform: scale(0.86) translate3d(0, 8px, 0);
+}
+
+.composition-model b,
+.composition-model span {
+  position: absolute;
+  z-index: 3;
+  font-family: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.composition-model b {
+  top: 0;
+  right: 0;
+  color: rgba(247, 242, 255, 0.22);
+  font-size: 8px;
+  writing-mode: vertical-rl;
+}
+
+.composition-model span {
+  left: 0;
+  bottom: 0;
+  color: rgba(var(--accent-rgb), 0.5);
+  font-size: 8px;
+}
+
 .bottle-glyph {
   position: relative;
   width: 72px;
   height: 168px;
-  margin-bottom: auto;
   border-radius: 24px 24px 18px 18px;
   background:
     linear-gradient(130deg, rgba(247, 242, 255, 0.28), transparent 22%),
@@ -146,11 +243,14 @@
 
 .scent-card p,
 .scent-card em,
-.scent-card strong {
+.scent-meta,
+.cart-add-button {
   font-family: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
 }
 
 .scent-card p {
+  position: relative;
+  z-index: 1;
   margin: 34px 0 10px;
   color: rgba(var(--accent-rgb), 0.9);
   font-size: 9px;
@@ -159,6 +259,8 @@
 }
 
 .scent-card h3 {
+  position: relative;
+  z-index: 1;
   margin: 0;
   color: var(--ink);
   font-family: var(--font-cormorant), Georgia, serif;
@@ -168,6 +270,8 @@
 }
 
 .scent-card small {
+  position: relative;
+  z-index: 1;
   display: block;
   min-height: 52px;
   margin-top: 18px;
@@ -177,6 +281,8 @@
 }
 
 .note-row {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -193,10 +299,74 @@
   text-transform: uppercase;
 }
 
-.scent-card strong {
+.scent-meta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
   margin-top: 30px;
-  color: rgba(247, 242, 255, 0.78);
-  font-size: 0.95rem;
+  padding-top: 18px;
+  border-top: 1px solid rgba(var(--accent-rgb), 0.22);
+}
+
+.scent-meta strong {
+  color: rgba(247, 242, 255, 0.82);
+  font-size: 0.94rem;
+  letter-spacing: 0.18em;
+}
+
+.scent-meta span {
+  color: rgba(247, 242, 255, 0.42);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.cart-add-button {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  margin-top: 18px;
+  padding: 6px 7px 6px 17px;
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.1);
+  color: rgba(247, 242, 255, 0.86);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: transform 460ms var(--ease-out-quint), border-color 460ms var(--ease-out-quint), background 460ms var(--ease-out-quint);
+}
+
+.cart-add-button i {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.2);
+  font-style: normal;
+  letter-spacing: 0;
+  transition: transform 460ms var(--ease-out-quint), background 460ms var(--ease-out-quint);
+}
+
+.cart-add-button:hover {
+  transform: translate3d(0, -2px, 0);
+  border-color: rgba(var(--accent-rgb), 0.56);
+  background: rgba(var(--accent-rgb), 0.16);
+}
+
+.cart-add-button:hover i {
+  transform: translate3d(2px, -1px, 0);
+  background: rgba(var(--accent-rgb), 0.3);
 }
 
 .note-line span {
@@ -330,6 +500,11 @@
     padding-inline: 12px;
   }
 
+  .nav-actions {
+    justify-self: end;
+    gap: 6px;
+  }
+
   .time-hud span {
     max-width: 86px;
     white-space: nowrap;
@@ -383,15 +558,23 @@
 
   .product-grid {
     grid-template-columns: 1fr;
-    gap: 14px;
+    gap: 46px;
   }
 
   .scent-card,
   .scent-card:nth-child(2),
   .scent-card:hover,
   .scent-card:nth-child(2):hover {
-    min-height: 390px;
+    min-height: 610px;
     transform: none;
+  }
+
+  .composition-model {
+    min-height: 410px;
+  }
+
+  .composition-model-canvas {
+    inset: -72px 0 -42px;
   }
 
   .film-frames figure:nth-child(2) {
@@ -424,6 +607,16 @@
     font-size: 7px;
   }
 
+  .cart-pill {
+    min-width: 39px;
+    padding: 0 7px;
+    font-size: 7px;
+  }
+
+  .cart-pill span {
+    display: none;
+  }
+
   .time-hud span {
     display: none;
   }
@@ -434,6 +627,21 @@
 
   .story-panel {
     padding-inline: 18px;
+  }
+
+  .scent-card,
+  .scent-card:nth-child(2),
+  .scent-card:hover,
+  .scent-card:nth-child(2):hover {
+    min-height: 590px;
+  }
+
+  .composition-model {
+    min-height: 390px;
+  }
+
+  .composition-model-canvas {
+    inset: -66px 0 -36px;
   }
 
   .phase-line,
@@ -450,6 +658,26 @@
     max-width: 100%;
     font-size: 9px;
     letter-spacing: 0.16em;
+  }
+
+  .cart-drawer {
+    top: 6px;
+    right: 6px;
+    bottom: 6px;
+    width: calc(100vw - 12px);
+  }
+
+  .cart-drawer-shell {
+    padding: 20px;
+    border-radius: 24px;
+  }
+
+  .quote-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cart-line {
+    padding: 16px;
   }
 }
 
