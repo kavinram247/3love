@@ -1,26 +1,17 @@
 'use client'
 
-import Image from 'next/image'
-import type { CSSProperties, FormEvent } from 'react'
+import type { CSSProperties } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import CompositionModel from './CompositionModel'
+import Image from 'next/image'
+import Link from 'next/link'
+import { ClerkLoaded, ClerkLoading, Show } from '@clerk/nextjs'
+import { BOTTLE_SCENE_SRC, products as fallbackProducts } from '@/lib/products'
+import type { Product } from '@/lib/products'
+import { formatGbp } from '@/lib/backend/format'
 
 const BACKGROUND_VIDEO_SRC = '/assets/rotation/3love-rotation-cosmic-drift-4k-ai.mp4'
 const POSTER_SRC = '/assets/rotation/3love-rotation-cosmic-drift-4k-poster.jpg'
-const CART_STORAGE_KEY = '3love-private-cart-v1'
-
-type Product = {
-  id: string
-  name: string
-  concept: string
-  phase: string
-  quote: string
-  notes: string[]
-  volume: string
-  stockLabel: string
-  mediaKey: string
-  accent: string
-}
+const CART_STORAGE_KEY = '3love-cart-v1'
 
 type CartItem = {
   productId: string
@@ -31,80 +22,89 @@ type CartLine = CartItem & {
   product: Product
 }
 
-type QuoteForm = {
-  name: string
-  email: string
-  country: string
-  postcode: string
-  message: string
+type CheckoutState = {
+  isLoading: boolean
+  error: string
 }
 
-const emptyQuoteForm: QuoteForm = {
-  name: '',
-  email: '',
-  country: '',
-  postcode: '',
-  message: '',
+type SystemScene = {
+  id: string
+  eyebrow: string
+  index: string
+  mood: 'system' | 'emotion' | 'experience' | 'memory'
+  title: string
+  body: string
+  fragments: string[]
 }
 
-const phases = [
-  { numeral: 'I', title: 'Learn to love yourself.', label: 'Self Love' },
-  { numeral: 'II', title: 'Learn to love all.', label: 'Love For Others' },
-  { numeral: 'III', title: 'Learn to love your purpose.', label: 'Love For Passion' },
-]
-
-const products: Product[] = [
+const systemScenes: SystemScene[] = [
   {
-    id: 'eclat',
-    name: 'Éclat',
-    concept: 'Self Love',
-    phase: 'Phase I',
-    quote: 'The love you give yourself echoes forever.',
-    notes: ['Lavender Haze', 'Nu Absolute', 'White Musk'],
-    volume: '50ML',
-    stockLabel: 'Private allocation',
-    mediaKey: 'object-01',
-    accent: '176 122 255',
+    id: 'system',
+    eyebrow: 'PHASE_00 / THE SYSTEM',
+    index: '00',
+    mood: 'system',
+    title: 'A system for emotional evolution.',
+    body: 'Before fragrance, there is a framework: emotion, experience, memory. The site is the first proof of the philosophy.',
+    fragments: ['Evolution', 'Innovation', 'Emotional engineering'],
   },
   {
-    id: 'lumiere',
-    name: 'Lumière',
-    concept: 'Love For Others',
-    phase: 'Phase II',
-    quote: 'Love is the light we leave behind.',
-    notes: ['Blood Orange', 'Damascus Rose', 'Amber Star'],
-    volume: '50ML',
-    stockLabel: 'Studio reserve',
-    mediaKey: 'object-02',
-    accent: '255 150 76',
+    id: 'emotion',
+    eyebrow: 'SECTION_01 / THE TRIGGER',
+    index: '01',
+    mood: 'emotion',
+    title: 'Every connection begins as a feeling.',
+    body: 'Attraction arrives before language. It flickers, pulls, and destabilizes the room.',
+    fragments: ['Instinct', 'Tension', 'Curiosity'],
   },
   {
-    id: 'ardeur',
-    name: 'Ardeur',
-    concept: 'Love For Passion',
-    phase: 'Phase III',
-    quote: 'Passion is the only rebellion worth pursuing.',
-    notes: ['Black Pepper', 'Metallic Rose', 'Velour Oud'],
-    volume: '50ML',
-    stockLabel: 'Limited request',
-    mediaKey: 'object-03',
-    accent: '224 72 126',
+    id: 'experience',
+    eyebrow: 'SECTION_02 / THE SEQUENCE',
+    index: '02',
+    mood: 'experience',
+    title: 'Experience transforms emotion into memory.',
+    body: 'Layer by layer, movement becomes intention. The system begins to orchestrate what the body already knows.',
+    fragments: ['Texture', 'Diffusion', 'Sequence'],
+  },
+  {
+    id: 'memory',
+    eyebrow: 'SECTION_03 / THE IMPRINT',
+    index: '03',
+    mood: 'memory',
+    title: 'Memory is what remains.',
+    body: 'The motion fades. The signal softens. Something from the experience refuses to leave.',
+    fragments: ['Reflection', 'Archive', 'Afterimage'],
   },
 ]
 
-const productLookup = new Map(products.map((product) => [product.id, product]))
+const philosophyInteractions = [
+  {
+    code: '01',
+    label: 'Emotion',
+    copy: 'The immediate trigger. Fast, instinctive, impossible to explain before it happens.',
+  },
+  {
+    code: '02',
+    label: 'Experience',
+    copy: 'The orchestrated middle. Notes, texture, movement, and atmosphere begin to synchronise.',
+  },
+  {
+    code: '03',
+    label: 'Memory',
+    copy: 'The lasting imprint. What stays after the movement has disappeared.',
+  },
+]
 
 const noteStack = [
-  { tier: 'Top', label: 'Opening', copy: 'Volatile, immediate, gone within minutes.', examples: 'Bergamot, Citrus, Ozone' },
-  { tier: 'Heart', label: 'Character', copy: 'The identity of the composition as the first signal fades.', examples: 'Rose, Jasmine, Iris' },
-  { tier: 'Base', label: 'Permanence', copy: 'What remains. The memory anchor.', examples: 'Oud, Sandalwood, Ambergris' },
+  { tier: 'Top', label: 'Trigger', copy: 'The first version: volatile, immediate, and emotionally charged.', examples: 'Bergamot, Citrus, Ozone' },
+  { tier: 'Heart', label: 'Sequence', copy: 'The experience layer: the identity of the composition as the first signal evolves.', examples: 'Rose, Jasmine, Iris' },
+  { tier: 'Base', label: 'Imprint', copy: 'The memory anchor: warm, slow, and designed to remain.', examples: 'Oud, Sandalwood, Ambergris' },
 ]
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
 
-function sanitizeCartItems(value: unknown): CartItem[] {
+function sanitizeCartItems(value: unknown, productLookup: Map<string, Product>): CartItem[] {
   if (!Array.isArray(value)) return []
 
   return value.reduce<CartItem[]>((items, item) => {
@@ -113,11 +113,13 @@ function sanitizeCartItems(value: unknown): CartItem[] {
     const candidate = item as Partial<CartItem>
     if (typeof candidate.productId !== 'string' || !productLookup.has(candidate.productId)) return items
 
-    const quantity = clamp(Math.trunc(Number(candidate.quantity) || 1), 1, 9)
+    const product = productLookup.get(candidate.productId)
+    if (!product || product.availableStock <= 0) return items
+    const quantity = clamp(Math.trunc(Number(candidate.quantity) || 1), 1, Math.min(9, product.availableStock))
     const existing = items.find((cartItem) => cartItem.productId === candidate.productId)
 
     if (existing) {
-      existing.quantity = clamp(existing.quantity + quantity, 1, 9)
+      existing.quantity = clamp(existing.quantity + quantity, 1, Math.min(9, product.availableStock))
       return items
     }
 
@@ -126,34 +128,49 @@ function sanitizeCartItems(value: unknown): CartItem[] {
 }
 
 function syncVideoFrame(video: HTMLVideoElement, progress: number, duration: number) {
-  if (!duration || Number.isNaN(duration)) return
+  if (!Number.isFinite(duration) || duration <= 0) return
 
   const safeDuration = Math.max(duration - 0.035, 0)
   const nextTime = clamp(progress * safeDuration, 0.02, safeDuration)
 
-  if (Math.abs(video.currentTime - nextTime) > 0.01) {
+  if (Math.abs(video.currentTime - nextTime) <= 0.01) return
+
+  try {
     video.currentTime = nextTime
+  } catch {
+    // Some browsers briefly reject seeks while restoring from cache or switching tabs.
+    // The next scroll/readiness tick will retry against the same target frame.
   }
 }
 
-export default function CinematicScrollExperience() {
+export default function CinematicScrollExperience({
+  storefrontProducts = fallbackProducts,
+}: {
+  storefrontProducts?: Product[]
+}) {
+  const activeProducts = storefrontProducts.length > 0 ? storefrontProducts : fallbackProducts
+  const featuredProduct = activeProducts[0] ?? fallbackProducts[0]
+  const productLookup = useMemo(() => new Map(activeProducts.map((product) => [product.id, product])), [activeProducts])
   const sectionRef = useRef<HTMLElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const rafRef = useRef<number | null>(null)
   const stopTimerRef = useRef<number | null>(null)
+  const checkoutKeyRef = useRef<string | null>(null)
+  const cartCloseRef = useRef<HTMLButtonElement | null>(null)
+  const cartDrawerRef = useRef<HTMLElement | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [isCartOpen, setIsCartOpen] = useState(false)
-  const [quoteForm, setQuoteForm] = useState<QuoteForm>(emptyQuoteForm)
-  const [isQuoteSent, setIsQuoteSent] = useState(false)
+  const [checkoutNote, setCheckoutNote] = useState('')
   const [hasLoadedCart, setHasLoadedCart] = useState(false)
+  const [checkoutState, setCheckoutState] = useState<CheckoutState>({ isLoading: false, error: '' })
 
   const cartLines = useMemo<CartLine[]>(
     () => cartItems.flatMap((item) => {
       const product = productLookup.get(item.productId)
       return product ? [{ ...item, product }] : []
     }),
-    [cartItems],
+    [cartItems, productLookup],
   )
 
   const cartCount = useMemo(
@@ -161,18 +178,25 @@ export default function CinematicScrollExperience() {
     [cartItems],
   )
 
+  const cartSubtotal = useMemo(
+    () => cartLines.reduce((total, line) => total + line.product.priceGbpPence * line.quantity, 0),
+    [cartLines],
+  )
+
   const addProductToCart = (productId: string) => {
+    const product = productLookup.get(productId)
+    if (!product || product.availableStock <= 0) return
     setCartItems((items) => {
       const exists = items.some((item) => item.productId === productId)
       if (!exists) return [...items, { productId, quantity: 1 }]
 
       return items.map((item) => (
         item.productId === productId
-          ? { ...item, quantity: clamp(item.quantity + 1, 1, 9) }
+          ? { ...item, quantity: clamp(item.quantity + 1, 1, Math.min(9, product.availableStock)) }
           : item
       ))
     })
-    setIsQuoteSent(false)
+    setCheckoutState({ isLoading: false, error: '' })
     setIsCartOpen(true)
   }
 
@@ -180,26 +204,57 @@ export default function CinematicScrollExperience() {
     setCartItems((items) => items.flatMap((item) => {
       if (item.productId !== productId) return [item]
 
-      const quantity = clamp(item.quantity + delta, 0, 9)
+      const product = productLookup.get(productId)
+      const quantity = clamp(item.quantity + delta, 0, Math.min(9, product?.availableStock ?? 9))
       return quantity > 0 ? [{ ...item, quantity }] : []
     }))
-    setIsQuoteSent(false)
+    setCheckoutState({ isLoading: false, error: '' })
   }
 
   const removeCartItem = (productId: string) => {
     setCartItems((items) => items.filter((item) => item.productId !== productId))
-    setIsQuoteSent(false)
+    setCheckoutState({ isLoading: false, error: '' })
   }
 
-  const updateQuoteField = (field: keyof QuoteForm, value: string) => {
-    setQuoteForm((form) => ({ ...form, [field]: value }))
-    setIsQuoteSent(false)
-  }
+  const startCheckout = async () => {
+    if (cartLines.length === 0 || checkoutState.isLoading) return
 
-  const handleQuoteSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (cartLines.length === 0) return
-    setIsQuoteSent(true)
+    setCheckoutState({ isLoading: true, error: '' })
+    checkoutKeyRef.current ??= window.crypto.randomUUID()
+
+    try {
+      const response = await fetch('/api/checkout/create-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: cartLines.map(({ product, quantity }) => ({
+            variantId: product.variantId,
+            quantity,
+          })),
+          checkoutKey: checkoutKeyRef.current,
+          checkoutNote,
+        }),
+      })
+
+      const payload = await response.json().catch(() => ({})) as { url?: string; error?: string; loginUrl?: string; code?: string }
+
+      if (response.status === 401 && payload.loginUrl) {
+        window.location.href = payload.loginUrl
+        return
+      }
+
+      if (!response.ok || !payload.url) {
+        if (payload.code === 'CHECKOUT_REUSED') checkoutKeyRef.current = null
+        throw new Error(payload.error || 'Checkout could not be started.')
+      }
+
+      window.location.href = payload.url
+    } catch (error) {
+      setCheckoutState({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Checkout could not be started.',
+      })
+    }
   }
 
   const returnToCompositions = () => {
@@ -210,15 +265,38 @@ export default function CinematicScrollExperience() {
   }
 
   useEffect(() => {
+    let isCancelled = false
+    let localItems: CartItem[] = []
+
     try {
       const storedCart = window.localStorage.getItem(CART_STORAGE_KEY)
-      if (storedCart) setCartItems(sanitizeCartItems(JSON.parse(storedCart)))
+      if (storedCart) localItems = sanitizeCartItems(JSON.parse(storedCart), productLookup)
+      setCartItems(localItems)
     } catch {
       window.localStorage.removeItem(CART_STORAGE_KEY)
-    } finally {
-      setHasLoadedCart(true)
     }
-  }, [])
+
+    fetch('/api/cart')
+      .then(async (response) => {
+        if (!response.ok) return null
+        return response.json() as Promise<{ items?: CartItem[] }>
+      })
+      .then((payload) => {
+        if (isCancelled) return
+        const remoteItems = sanitizeCartItems(payload?.items, productLookup)
+        setCartItems(remoteItems.length > 0 ? remoteItems : localItems)
+      })
+      .catch(() => {
+        // Anonymous and unconfigured sessions keep using local cart storage.
+      })
+      .finally(() => {
+        if (!isCancelled) setHasLoadedCart(true)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [productLookup])
 
   useEffect(() => {
     if (!hasLoadedCart) return
@@ -230,19 +308,54 @@ export default function CinematicScrollExperience() {
         window.localStorage.removeItem(CART_STORAGE_KEY)
       }
     } catch {
-      // Storage can fail in private contexts; the cart still works for the active session.
+      // Storage can fail in restricted browser contexts; the cart still works for the active session.
     }
-  }, [cartItems, hasLoadedCart])
+
+    fetch('/api/cart', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: cartLines.map(({ product, quantity }) => ({
+          variantId: product.variantId,
+          quantity,
+        })),
+      }),
+    }).catch(() => {
+      // Server cart persistence is best-effort until the user is logged in and MongoDB is configured.
+    })
+  }, [cartItems, cartLines, hasLoadedCart])
 
   useEffect(() => {
     if (!isCartOpen) return
 
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    cartCloseRef.current?.focus()
+
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setIsCartOpen(false)
+      if (event.key !== 'Tab') return
+
+      const focusable = cartDrawerRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )
+      if (!focusable?.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
 
     window.addEventListener('keydown', closeOnEscape)
-    return () => window.removeEventListener('keydown', closeOnEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', closeOnEscape)
+    }
   }, [isCartOpen])
 
   useEffect(() => {
@@ -261,17 +374,24 @@ export default function CinematicScrollExperience() {
       lastTime: performance.now(),
       lastInput: performance.now(),
       active: false,
+      ready: false,
+    }
+
+    const readDuration = () => {
+      const duration = video.duration
+      return Number.isFinite(duration) && duration > 0 ? duration : state.duration
     }
 
     const measureProgress = () => {
       const rect = section.getBoundingClientRect()
-      const range = Math.max(rect.height - window.innerHeight, 1)
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight
+      const range = Math.max(rect.height - viewportHeight, 1)
       state.target = clamp(-rect.top / range, 0, 1)
       root.style.setProperty('--film-target', state.target.toFixed(4))
     }
 
     const writeFrame = () => {
-      syncVideoFrame(video, state.current, state.duration)
+      if (state.ready) syncVideoFrame(video, state.current, readDuration())
       root.style.setProperty('--film-progress', state.current.toFixed(4))
       root.style.setProperty('--film-velocity', Math.min(Math.abs(state.velocity) / 2200, 1).toFixed(4))
     }
@@ -326,9 +446,20 @@ export default function CinematicScrollExperience() {
       }
     }
 
-    const onScroll = () => {
-      if (reduceMotion.matches) return
+    const syncNow = (activate = true) => {
+      measureProgress()
+      if (activate && !reduceMotion.matches) {
+        state.active = true
+        state.lastInput = performance.now()
+        startLoop()
+        return
+      }
 
+      state.current = state.target
+      writeFrame()
+    }
+
+    const onScroll = () => {
       const now = performance.now()
       const y = window.scrollY
       const dt = Math.max(now - state.lastTime, 16)
@@ -336,16 +467,15 @@ export default function CinematicScrollExperience() {
       state.lastY = y
       state.lastTime = now
       state.lastInput = now
-      state.active = true
-      measureProgress()
-      startLoop()
+      syncNow(!reduceMotion.matches)
 
       if (stopTimerRef.current !== null) window.clearTimeout(stopTimerRef.current)
       stopTimerRef.current = window.setTimeout(freeze, 86)
     }
 
-    const onMetadata = () => {
-      state.duration = video.duration || 0
+    const onVideoReady = () => {
+      state.duration = readDuration()
+      state.ready = state.duration > 0 || video.readyState >= 1
       video.pause()
       measureProgress()
       state.current = state.target
@@ -358,14 +488,51 @@ export default function CinematicScrollExperience() {
       freeze()
     }
 
+    const onWake = () => {
+      state.lastY = window.scrollY
+      state.lastTime = performance.now()
+      state.duration = readDuration()
+      state.ready = state.ready || video.readyState >= 1
+      syncNow(false)
+    }
+
+    const onUserInput = () => {
+      state.lastInput = performance.now()
+      syncNow(!reduceMotion.matches)
+    }
+
     video.pause()
     video.preload = 'auto'
-    video.addEventListener('loadedmetadata', onMetadata)
+    video.addEventListener('loadedmetadata', onVideoReady)
+    video.addEventListener('durationchange', onVideoReady)
+    video.addEventListener('loadeddata', onVideoReady)
+    video.addEventListener('canplay', onVideoReady)
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onResize, { passive: true })
+    window.addEventListener('orientationchange', onResize, { passive: true })
+    window.addEventListener('pageshow', onWake, { passive: true })
+    window.addEventListener('focus', onWake, { passive: true })
+    window.addEventListener('hashchange', onWake, { passive: true })
+    window.addEventListener('wheel', onUserInput, { passive: true })
+    window.addEventListener('touchmove', onUserInput, { passive: true })
+    window.visualViewport?.addEventListener('resize', onResize, { passive: true })
+    document.addEventListener('visibilitychange', onWake)
 
-    if (video.readyState >= 1) onMetadata()
+    if (video.readyState >= 1) onVideoReady()
     else video.load()
+
+    const watchdog = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return
+
+      const y = window.scrollY
+      if (Math.abs(y - state.lastY) > 0.5) {
+        onScroll()
+        return
+      }
+
+      measureProgress()
+      if (Math.abs(state.target - state.current) > 0.004) syncNow(true)
+    }, 240)
 
     const revealObserver = new IntersectionObserver(
       (entries) => {
@@ -383,23 +550,73 @@ export default function CinematicScrollExperience() {
       const target = document.querySelector(window.location.hash)
       if (!(target instanceof HTMLElement)) return
       target.scrollIntoView({ block: 'start', inline: 'nearest', behavior: 'auto' })
-      measureProgress()
-      freeze()
+      onWake()
     }, 140)
 
     return () => {
-      video.removeEventListener('loadedmetadata', onMetadata)
+      video.removeEventListener('loadedmetadata', onVideoReady)
+      video.removeEventListener('durationchange', onVideoReady)
+      video.removeEventListener('loadeddata', onVideoReady)
+      video.removeEventListener('canplay', onVideoReady)
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onResize)
+      window.removeEventListener('orientationchange', onResize)
+      window.removeEventListener('pageshow', onWake)
+      window.removeEventListener('focus', onWake)
+      window.removeEventListener('hashchange', onWake)
+      window.removeEventListener('wheel', onUserInput)
+      window.removeEventListener('touchmove', onUserInput)
+      window.visualViewport?.removeEventListener('resize', onResize)
+      document.removeEventListener('visibilitychange', onWake)
       revealObserver.disconnect()
       window.clearTimeout(hashTimer)
+      window.clearInterval(watchdog)
       if (stopTimerRef.current !== null) window.clearTimeout(stopTimerRef.current)
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
     }
   }, [])
 
   return (
-    <main className="cinematic-site">
+    <main id="main-content" className="cinematic-site">
+      <section id="brand" className="brand-gateway" aria-label="3love brand philosophy" data-reveal>
+        <div className="brand-cosmos" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="brand-gateway-copy">
+          <p className="micro-label">3LOVE / BRAND SYSTEM</p>
+          <h1>A fragrance house for emotional memory.</h1>
+          <p>
+            Emotion becomes experience. Experience becomes memory.
+          </p>
+          <div className="brand-gateway-actions">
+            <a className="cinema-button" href="#hero">
+              <span>Enter the scroll film</span>
+              <i>↓</i>
+            </a>
+            <a className="quiet-link" href="#phase-01">View Phase 01</a>
+          </div>
+        </div>
+        <div className="brand-principles" aria-label="3love brand framework">
+          <article>
+            <span>01</span>
+            <strong>Emotion</strong>
+            <p>The trigger before language. A first pull, felt before it is understood.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <strong>Experience</strong>
+            <p>The sequence that gives the feeling structure, rhythm, and atmosphere.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <strong>Memory</strong>
+            <p>The imprint that remains after the scene has disappeared.</p>
+          </article>
+        </div>
+      </section>
+
       <section ref={sectionRef} id="hero" className="film-scroll" aria-label="3love cinematic scroll experience">
         <div className="film-stage" aria-hidden="true">
           <video
@@ -423,30 +640,73 @@ export default function CinematicScrollExperience() {
 
         <div className={`cinema-loader ${isReady ? 'is-loaded' : ''}`} aria-hidden="true">
           <div className="loader-mark">
-            <img src="/logo.jpg" alt="" width={112} height={46} />
+            <Image src="/logo.jpg" alt="" width={112} height={46} priority />
           </div>
           <p>Initializing memory system</p>
         </div>
 
         <nav className="cinema-nav" aria-label="Primary navigation">
-          <a href="#hero" className="brand-lockup" aria-label="3love home">
-            <img src="/logo.jpg" alt="3love" width={92} height={38} />
+          <a href="#brand" className="brand-lockup" aria-label="3love home">
+            <Image src="/logo.jpg" alt="3love" width={92} height={38} priority />
           </a>
           <div className="nav-links">
+            <a href="#brand">Brand</a>
             <a href="#system">System</a>
             <a href="#experience">Experience</a>
-            <a href="#compositions">Compositions</a>
-            <a href="#enter">Enter</a>
+            <a href="#memory">Memory</a>
+            <a href="#phase-01">Phase 01</a>
+            <a href="#buy" className="nav-buy-link">Buy</a>
+            <ClerkLoading><Link href="/login">Account</Link></ClerkLoading>
+            <ClerkLoaded>
+              <Show when="signed-in" fallback={<Link href="/login">Sign in</Link>}>
+                <Link href="/account">Account</Link>
+              </Show>
+            </ClerkLoaded>
           </div>
           <div className="nav-actions">
+            <div className="cart-trigger">
+              <button
+                className="cart-pill"
+                type="button"
+                onClick={() => setIsCartOpen(true)}
+                aria-label={`Open cart with ${cartCount} ${cartCount === 1 ? 'item' : 'items'}`}
+              >
+                <span>Cart</span>
+                <i>{cartCount}</i>
+              </button>
+              <div className="cart-peek" aria-hidden="true">
+                <p className="micro-label">Cart preview</p>
+                {cartLines.length === 0 ? (
+                  <div className="cart-peek-empty">
+                    <strong>No compositions selected.</strong>
+                    <span>Hover reveals the cart. Click to open checkout.</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="cart-peek-lines">
+                      {cartLines.slice(0, 2).map(({ product, quantity }) => (
+                        <div key={product.id}>
+                          <span>{quantity} x {product.phase}</span>
+                          <strong>{product.name}</strong>
+                          <em>{product.concept}</em>
+                        </div>
+                      ))}
+                    </div>
+                    <span className="cart-peek-total">
+                      {cartCount} {cartCount === 1 ? 'artifact' : 'artifacts'} staged for checkout
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
             <button
-              className="cart-pill"
+              className="sound-pill"
               type="button"
-              onClick={() => setIsCartOpen(true)}
-              aria-label={`Open private cart with ${cartCount} ${cartCount === 1 ? 'item' : 'items'}`}
+              disabled
+              title="Ambient sound asset pending"
+              aria-label="Ambient sound pending"
             >
-              <span>Cart</span>
-              <i>{cartCount}</i>
+              Sound
             </button>
             <div className="time-hud">
               <span>Scroll controls time</span>
@@ -456,14 +716,19 @@ export default function CinematicScrollExperience() {
         </nav>
 
         <div className="story-rail">
-          <article className="story-panel hero-panel" data-reveal>
-            <p className="micro-label">3V-L0V3 / Memory Constants</p>
+          <article className="story-panel hero-panel entry-panel" data-reveal>
+            <div className="entry-field" aria-hidden="true">
+              <span>emotion</span>
+              <span>experience</span>
+              <span>memory</span>
+            </div>
+            <p className="micro-label">3V-L0V3 / ENTRY</p>
             <h1>
               3 Versions
               <span>of Love</span>
             </h1>
             <p className="hero-copy">
-              Perfume as memory. Love as energy. Emotion as a cosmic object.
+              A system that engineers emotional memory through evolving experiences.
             </p>
             <a className="cinema-button" href="#system">
               <span>Begin the system</span>
@@ -471,106 +736,126 @@ export default function CinematicScrollExperience() {
             </a>
           </article>
 
-          <article id="system" className="story-panel split-panel align-right" data-reveal>
-            <div className="scene-index">01</div>
-            <div className="copy-block">
-              <p className="micro-label">First Scroll / System Intro</p>
-              <h2>Not a brand. A system.</h2>
-              <p>
-                Developed to research, learn, and evolve. You are not the observer.
-                You are the user.
-              </p>
+          {systemScenes.map((scene) => (
+            <article
+              key={scene.id}
+              id={scene.id}
+              className={`story-panel system-scene scene-${scene.mood}`}
+              data-reveal
+            >
+              <div className="scene-index">{scene.index}</div>
+              <div className="copy-block">
+                <p className="micro-label">{scene.eyebrow}</p>
+                <h2>{scene.title}</h2>
+                <p>{scene.body}</p>
+              </div>
+              <div className="scene-field" aria-hidden="true">
+                {scene.fragments.map((fragment, index) => (
+                  <span key={fragment} style={{ '--fragment-index': index } as CSSProperties}>
+                    {fragment}
+                  </span>
+                ))}
+                <i />
+              </div>
+            </article>
+          ))}
+
+          <article className="story-panel transition-panel sync-panel" data-reveal>
+            <div className="transition-copy">
+              <p className="micro-label">TRANSITION / ALIGNMENT</p>
+              <h2>The signal begins to align.</h2>
+              <p>Particles slow. Reflections sharpen. The system stops feeling abstract and starts becoming structure.</p>
             </div>
           </article>
 
-          <article className="story-panel phase-panel" data-reveal>
-            <div className="copy-block narrow">
-              <p className="micro-label">Second Scroll / User Transformation</p>
-              <h2>User evolves through three versions.</h2>
+          <article className="story-panel transition-panel fade-panel" data-reveal>
+            <div className="transition-copy">
+              <p className="micro-label">MEMORY / COLLAPSE</p>
+              <h2>What disappears becomes the imprint.</h2>
+              <p>The dream thins out. The abstract field condenses into a physical signal.</p>
             </div>
-            <div className="phase-stack">
-              {phases.map((phase) => (
-                <div key={phase.numeral} className="phase-line">
-                  <span>{phase.numeral}</span>
-                  <div>
-                    <small>{phase.label}</small>
-                    <strong>{phase.title}</strong>
-                  </div>
+          </article>
+
+          <article id="phase-01" className="story-panel phase-one-panel" data-reveal>
+            <p className="micro-label">MEMORY → PRODUCT</p>
+            <h2>
+              <span>PHASE_01</span>
+              THE DANCE OF DIFFUSION
+            </h2>
+            <p>
+              The system becomes tangible: a fragrance built to move through emotion,
+              experience, and memory before it ever becomes a product.
+            </p>
+            <div className="phase-one-codes" aria-label="Phase 01 interaction sequence">
+              {philosophyInteractions.map((item) => (
+                <div key={item.code}>
+                  <span>{item.code}</span>
+                  <strong>{item.label}</strong>
+                  <small>{item.copy}</small>
                 </div>
               ))}
             </div>
           </article>
 
-          <article className="story-panel split-panel" data-reveal>
-            <div className="scene-index">03</div>
-            <div className="copy-block">
-              <p className="micro-label">Phase 1 / Aroma</p>
-              <h2>Scent is the fastest path to memory.</h2>
+          <article
+            id="artifact-theater"
+            className="story-panel artifact-theater-panel"
+            data-reveal
+            style={{ '--accent-rgb': featuredProduct.accent } as CSSProperties}
+          >
+            <div className="artifact-theater-heading">
+              <p className="micro-label">PHASE_01 / CLOSER LOOK</p>
+              <h2>The first artifact.</h2>
               <p>
-                No permission required. No warning given. One inhale, and the
-                system writes directly to you.
+                One composition holds the system. The image stays physical,
+                clear, and cinematic.
               </p>
             </div>
-          </article>
 
-          <article className="story-panel memory-panel" data-reveal>
-            <p className="micro-label">Fourth Scroll / Memory Constants</p>
-            <h2>
-              Memory
-              <span>Constants.</span>
-            </h2>
-            <p>Controlled sensory anchors designed to lock moments into permanence.</p>
-          </article>
-
-          <article id="compositions" className="story-panel product-panel" data-reveal>
-            <div className="product-heading">
-              <p className="micro-label">Fifth Scroll / Fragrance Philosophy</p>
-              <h2>These are compositions.</h2>
-              <p>Constructed from high-grade aromatic materials sourced by Kaz.</p>
-            </div>
-            <div className="product-grid">
-              {products.map((product, index) => (
-                <article
-                  key={product.id}
-                  className="scent-card"
-                  style={{ '--accent-rgb': product.accent } as CSSProperties}
+            <div className="artifact-screen" aria-label={`${featuredProduct.name} artifact preview`}>
+              <div className="artifact-screen-chrome" aria-hidden="true">
+                <span>single artifact</span>
+                <i />
+                <span>{featuredProduct.phase}</span>
+              </div>
+              <div className="artifact-image-stage">
+                <Image src={BOTTLE_SCENE_SRC} alt="" aria-hidden="true" fill sizes="(max-width: 900px) 100vw, 86vw" />
+              </div>
+              <div className="artifact-spec">
+                <p>{featuredProduct.phase} / {featuredProduct.concept}</p>
+                <h3>{featuredProduct.name}</h3>
+                <span>{featuredProduct.quote}</span>
+                <div className="artifact-note-row">
+                  {featuredProduct.notes.map((note) => <em key={note}>{note}</em>)}
+                </div>
+                <button
+                  className="cart-add-button artifact-add-button"
+                  type="button"
+                  onClick={() => addProductToCart(featuredProduct.id)}
+                  disabled={featuredProduct.availableStock <= 0}
                 >
-                  <CompositionModel
-                    accent={product.accent}
-                    index={index}
-                    label={product.mediaKey}
-                    name={product.name}
-                  />
-                  <p>{product.phase} / {product.concept}</p>
-                  <h3>{product.name}</h3>
-                  <small>{product.quote}</small>
-                  <div className="note-row">
-                    {product.notes.map((note) => <em key={note}>{note}</em>)}
-                  </div>
-                  <div className="scent-meta">
-                    <strong>{product.volume}</strong>
-                    <span>{product.stockLabel}</span>
-                  </div>
-                  <button
-                    className="cart-add-button"
-                    type="button"
-                    onClick={() => addProductToCart(product.id)}
-                  >
-                    <span>Add to private cart</span>
-                    <i>+</i>
-                  </button>
-                </article>
-              ))}
+                  <span>{featuredProduct.availableStock > 0 ? `${formatGbp(featuredProduct.priceGbpPence)} · Add to cart` : 'Currently unavailable'}</span>
+                  <i>+</i>
+                </button>
+              </div>
+            </div>
+
+            <div className="artifact-controls single-artifact-controls" aria-label="Artifact details">
+              <div className="artifact-proof">
+                <span>{featuredProduct.volume}</span>
+                <strong>{featuredProduct.stockLabel}</strong>
+              </div>
+              <a className="quiet-link" href="#compositions">Enter compositions</a>
             </div>
           </article>
 
-          <article className="story-panel orchestration-panel" data-reveal>
+          <article className="story-panel orchestration-panel philosophy-panel" data-reveal>
             <div className="copy-block">
-              <p className="micro-label">Sixth Scroll / Brand Differentiation</p>
-              <h2>We orchestrate.</h2>
+              <p className="micro-label">PHASE_01 / FRAGRANCE PHILOSOPHY</p>
+              <h2>The fragrance works in three interactions.</h2>
               <p>
-                Like a conductor shaping sound, each note is placed with intention,
-                timing, and sequence.
+                Like a conductor shaping sound, each layer is placed with intention,
+                sequence, and emotional weight.
               </p>
             </div>
             <div className="note-stack">
@@ -587,37 +872,62 @@ export default function CinematicScrollExperience() {
             </div>
           </article>
 
-          <article id="experience" className="story-panel media-panel" data-reveal>
-            <div className="film-frames">
-              <figure>
-                <Image src="/assets/rotation/start-1280x720.png" alt="3love bottle start frame" width={640} height={360} />
-                <figcaption>Start frame</figcaption>
-              </figure>
-              <figure>
-                <Image src="/assets/rotation/end-1280x720.png" alt="3love bottle end frame" width={640} height={360} />
-                <figcaption>End frame</figcaption>
-              </figure>
-            </div>
-            <div className="copy-block">
-              <p className="micro-label">Seventh Scroll / Cinematic Experience</p>
-              <h2>Aroma in rotation.</h2>
+          <article id="compositions" className="story-panel product-panel" data-reveal>
+            <div className="product-heading">
+              <p className="micro-label">PHASE_01 / SINGLE PRODUCT</p>
+              <h2>The first physical outcome.</h2>
               <p>
-                The bottle turns while the cosmic field responds independently:
-                object, scent, and memory becoming one living signal.
+                Each active composition is priced from the live catalog and checked
+                against available inventory before Stripe opens.
               </p>
+            </div>
+            <div className="product-grid product-grid-single">
+              {activeProducts.map((product) => (
+                <article
+                  key={product.id}
+                  className="scent-card"
+                  style={{ '--accent-rgb': product.accent } as CSSProperties}
+                >
+                  <div id="buy" className="product-buy-plate" aria-label={`${product.name} purchase`}>
+                    <span>Now available</span>
+                    <strong>{product.name} / {product.volume} / {formatGbp(product.priceGbpPence)}</strong>
+                    <button
+                      className="cart-add-button product-add-button"
+                      type="button"
+                      onClick={() => addProductToCart(product.id)}
+                      disabled={product.availableStock <= 0}
+                    >
+                      <span>{product.availableStock > 0 ? 'Add to cart' : 'Unavailable'}</span>
+                      <i>+</i>
+                    </button>
+                  </div>
+                  <div className="scent-content">
+                    <p>{product.phase} / {product.concept}</p>
+                    <h3>{product.name}</h3>
+                    <small>{product.quote}</small>
+                    <div className="note-row">
+                      {product.notes.map((note) => <em key={note}>{note}</em>)}
+                    </div>
+                    <div className="scent-meta">
+                      <strong>{product.volume}</strong>
+                      <span>{product.stockLabel}</span>
+                    </div>
+                  </div>
+                </article>
+              ))}
             </div>
           </article>
 
           <article id="enter" className="story-panel final-panel" data-reveal>
-            <p className="micro-label">Final Scroll / Call to Entry</p>
+            <p className="micro-label">FINAL / ENTER PHASE_01</p>
             <h2>
-              They will belong to
-              <span>this moment.</span>
+              Now enter
+              <span>the artifact.</span>
             </h2>
-            <p>To you.</p>
+            <p>The system has become scent.</p>
             <div className="final-actions">
               <button className="cinema-button" type="button" onClick={() => setIsCartOpen(true)}>
-                <span>Open private cart</span>
+                <span>Open cart</span>
                 <i>↗</i>
               </button>
               <a className="quiet-link" href="#compositions">Explore compositions</a>
@@ -638,17 +948,21 @@ export default function CinematicScrollExperience() {
       />
 
       <aside
+        ref={cartDrawerRef}
         className={`cart-drawer ${isCartOpen ? 'is-open' : ''}`}
         aria-hidden={!isCartOpen}
-        aria-label="Private order cart"
+        aria-label="Checkout cart"
+        aria-modal="true"
+        role="dialog"
+        inert={!isCartOpen ? true : undefined}
       >
         <div className="cart-drawer-shell">
           <header className="cart-header">
             <div>
-              <p className="micro-label">Private Order</p>
-              <h2>Cart review</h2>
+              <p className="micro-label">Secure checkout</p>
+              <h2>Cart</h2>
             </div>
-            <button className="cart-close" type="button" onClick={() => setIsCartOpen(false)} aria-label="Close cart">
+            <button ref={cartCloseRef} className="cart-close" type="button" onClick={() => setIsCartOpen(false)} aria-label="Close cart">
               ×
             </button>
           </header>
@@ -682,6 +996,7 @@ export default function CinematicScrollExperience() {
                       </div>
                       <p>{product.concept} / {product.volume} / {product.stockLabel}</p>
                       <em>{product.notes.join(' / ')}</em>
+                      <strong className="cart-line-price">{formatGbp(product.priceGbpPence * quantity)}</strong>
                       <div className="quantity-control" aria-label={`${product.name} quantity`}>
                         <button type="button" onClick={() => changeCartQuantity(product.id, -1)} aria-label={`Remove one ${product.name}`}>
                           -
@@ -695,69 +1010,47 @@ export default function CinematicScrollExperience() {
                   ))}
                 </div>
 
-                <div className="shipping-note">
-                  <span>Global quote</span>
-                  <p>International availability, shipping, duties, and handling are confirmed before payment.</p>
-                </div>
-
-                <form className="quote-form" onSubmit={handleQuoteSubmit}>
-                  <div className="quote-form-grid">
-                    <label>
-                      <span>Name</span>
-                      <input
-                        value={quoteForm.name}
-                        onChange={(event) => updateQuoteField('name', event.target.value)}
-                        autoComplete="name"
-                        required
-                      />
-                    </label>
-                    <label>
-                      <span>Email</span>
-                      <input
-                        type="email"
-                        value={quoteForm.email}
-                        onChange={(event) => updateQuoteField('email', event.target.value)}
-                        autoComplete="email"
-                        required
-                      />
-                    </label>
-                    <label>
-                      <span>Country</span>
-                      <input
-                        value={quoteForm.country}
-                        onChange={(event) => updateQuoteField('country', event.target.value)}
-                        autoComplete="country-name"
-                        required
-                      />
-                    </label>
-                    <label>
-                      <span>Postcode / ZIP</span>
-                      <input
-                        value={quoteForm.postcode}
-                        onChange={(event) => updateQuoteField('postcode', event.target.value)}
-                        autoComplete="postal-code"
-                        required
-                      />
-                    </label>
-                  </div>
-                  <label className="quote-message">
-                    <span>Message</span>
-                    <textarea
-                      value={quoteForm.message}
-                      onChange={(event) => updateQuoteField('message', event.target.value)}
-                      rows={4}
-                    />
-                  </label>
-                  <button className="cinema-button cart-submit" type="submit">
-                    <span>Request private order</span>
-                    <i>↗</i>
-                  </button>
-                  {isQuoteSent && (
-                    <p className="quote-confirmation" role="status">
-                      Request staged locally. Payment, availability, shipping, and duties will be confirmed before anything is charged.
+                <div className="checkout-panel">
+                  <div className="checkout-summary">
+                    <p className="micro-label">Stripe checkout</p>
+                    <h3>Secure payment with Stripe.</h3>
+                    <p>
+                      We validate current pricing and reserve inventory before sending
+                      you to Stripe&apos;s hosted checkout. Card details never touch our server.
                     </p>
-                  )}
-                </form>
+                    <div className="checkout-count">
+                      <span>Items</span>
+                      <strong>{cartCount}</strong>
+                    </div>
+                    <div className="checkout-count checkout-total">
+                      <span>Subtotal</span>
+                      <strong>{formatGbp(cartSubtotal)}</strong>
+                    </div>
+                    <button className="stripe-button" type="button" onClick={startCheckout} disabled={checkoutState.isLoading}>
+                      {checkoutState.isLoading ? 'Preparing secure checkout…' : 'Pay securely with Stripe'}
+                    </button>
+                    {checkoutState.error && (
+                      <p className="quote-confirmation" role="alert">{checkoutState.error}</p>
+                    )}
+                  </div>
+
+                  <div className="shipping-note">
+                    <span>UK delivery</span>
+                    <p>Shipping and any configured taxes are shown for review in Stripe before payment.</p>
+                  </div>
+
+                  <label className="checkout-note">
+                    <span>Order note <em>optional</em></span>
+                    <textarea
+                      value={checkoutNote}
+                      onChange={(event) => setCheckoutNote(event.target.value)}
+                      maxLength={500}
+                      rows={3}
+                      placeholder="Delivery instructions or a short note"
+                    />
+                    <small>{checkoutNote.length}/500</small>
+                  </label>
+                </div>
               </>
             )}
           </div>

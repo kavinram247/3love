@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 
 // ── Deterministic star positions (seeded, no hydration issues) ────────────
 function makeStars(n: number) {
@@ -253,7 +254,7 @@ export default function Hero() {
       >
         {/* Logo */}
         <div className="hero-item-1 mb-10">
-          <img src="/logo.jpg" alt="3love" className="h-10 object-contain" />
+          <Image src="/logo.jpg" alt="3love" width={96} height={40} className="h-10 w-auto object-contain" />
         </div>
 
         {/* Three Bottles */}
