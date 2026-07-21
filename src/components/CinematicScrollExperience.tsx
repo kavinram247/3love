@@ -16,6 +16,10 @@ const CART_STORAGE_KEY = '3love-cart-v1'
 const SCRUB_FRAME_RATE = 24
 const SCRUB_FRAME_INTERVAL_MS = 1000 / SCRUB_FRAME_RATE
 const SCRUB_FRAME_EPSILON = 1 / (SCRUB_FRAME_RATE * 2)
+const SCRUB_SCROLL_SENSITIVITY = 1.14
+const SCRUB_SMOOTHING_MS = 32
+const SCRUB_MOBILE_SMOOTHING_MS = 40
+const SCRUB_SETTLE_LIMIT_MS = 180
 
 type CartItem = {
   productId: string
@@ -354,7 +358,8 @@ export default function CinematicScrollExperience({
   useEffect(() => {
     const section = sectionRef.current
     const video = videoRef.current
-    if (!section || !video) return
+    const stage = section?.querySelector<HTMLElement>('.film-stage')
+    if (!section || !stage || !video) return
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
     const mobileViewport = window.matchMedia('(max-width: 767px)')
@@ -366,6 +371,7 @@ export default function CinematicScrollExperience({
       lastY: window.scrollY,
       lastTime: performance.now(),
       lastInput: performance.now(),
+      lastRenderAt: performance.now(),
       lastSeekAt: 0,
       queuedTime: null as number | null,
       active: false,
@@ -379,8 +385,7 @@ export default function CinematicScrollExperience({
 
     const measureProgress = () => {
       const rect = section.getBoundingClientRect()
-      const viewportHeight = window.visualViewport?.height ?? window.innerHeight
-      const range = Math.max(rect.height - viewportHeight, 1)
+      const range = Math.max(section.offsetHeight - stage.offsetHeight, 1)
       state.target = clamp(-rect.top / range, 0, 1)
       section.style.setProperty('--film-target', state.target.toFixed(4))
     }
@@ -412,7 +417,8 @@ export default function CinematicScrollExperience({
 
       const duration = readDuration()
       if (state.ready && Number.isFinite(duration) && duration > 0) {
-        seekTo(videoTimeForProgress(state.current, duration), now, forceVideo)
+        const videoProgress = clamp(state.current * SCRUB_SCROLL_SENSITIVITY, 0, 1)
+        seekTo(videoTimeForProgress(videoProgress, duration), now, forceVideo)
       }
     }
 
@@ -435,20 +441,31 @@ export default function CinematicScrollExperience({
       }
 
       const timeSinceInput = now - state.lastInput
-      state.current = state.target
+      const elapsed = Math.min(Math.max(now - state.lastRenderAt, 0), 50)
+      const smoothingMs = mobileViewport.matches ? SCRUB_MOBILE_SMOOTHING_MS : SCRUB_SMOOTHING_MS
+      const smoothing = 1 - Math.exp(-elapsed / smoothingMs)
+      state.current += (state.target - state.current) * smoothing
+      state.lastRenderAt = now
       if (timeSinceInput > 96) state.velocity = 0
-      writeFrame(now, timeSinceInput > 96)
 
-      if (timeSinceInput > 96) {
+      const duration = readDuration()
+      const settleThreshold = duration > 0
+        ? 1 / (SCRUB_FRAME_RATE * duration * 2)
+        : 0.001
+      const isSettled = Math.abs(state.target - state.current) <= settleThreshold
+
+      if (isSettled || timeSinceInput >= SCRUB_SETTLE_LIMIT_MS) {
         freeze(now)
         return
       }
 
+      writeFrame(now)
       rafRef.current = requestAnimationFrame(render)
     }
 
     const startLoop = () => {
       if (rafRef.current === null) {
+        state.lastRenderAt = performance.now()
         rafRef.current = requestAnimationFrame(render)
       }
     }
@@ -511,7 +528,7 @@ export default function CinematicScrollExperience({
       }
 
       state.queuedTime = null
-      seekTo(queuedTime, performance.now(), true)
+      seekTo(queuedTime, performance.now(), !state.active)
     }
 
     const onResize = () => {
@@ -570,7 +587,6 @@ export default function CinematicScrollExperience({
     window.addEventListener('pageshow', onWake, { passive: true })
     window.addEventListener('focus', onWake, { passive: true })
     window.addEventListener('hashchange', onWake, { passive: true })
-    window.visualViewport?.addEventListener('resize', onResize, { passive: true })
     document.addEventListener('visibilitychange', onWake)
     reduceMotion.addEventListener('change', onMotionPreferenceChange)
 
@@ -606,7 +622,6 @@ export default function CinematicScrollExperience({
       window.removeEventListener('pageshow', onWake)
       window.removeEventListener('focus', onWake)
       window.removeEventListener('hashchange', onWake)
-      window.visualViewport?.removeEventListener('resize', onResize)
       document.removeEventListener('visibilitychange', onWake)
       reduceMotion.removeEventListener('change', onMotionPreferenceChange)
       revealObserver.disconnect()
