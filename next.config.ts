@@ -11,11 +11,25 @@ const securityHeaders = [
     : []),
 ]
 
+const immutableVideoHeaders = [
+  { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+]
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
   async headers() {
-    return [{ source: '/(.*)', headers: securityHeaders }]
+    return [
+      {
+        source: '/assets/rotation/3love-rotation-scrub-1080p-v1.mp4',
+        headers: immutableVideoHeaders,
+      },
+      {
+        source: '/assets/rotation/3love-rotation-scrub-720p-v1.mp4',
+        headers: immutableVideoHeaders,
+      },
+      { source: '/(.*)', headers: securityHeaders },
+    ]
   },
 }
 

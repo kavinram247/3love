@@ -9,9 +9,13 @@ import { BOTTLE_SCENE_SRC, products as fallbackProducts } from '@/lib/products'
 import type { Product } from '@/lib/products'
 import { formatGbp } from '@/lib/backend/format'
 
-const BACKGROUND_VIDEO_SRC = '/assets/rotation/3love-rotation-cosmic-drift-4k-ai.mp4'
+const SCRUB_VIDEO_DESKTOP_SRC = '/assets/rotation/3love-rotation-scrub-1080p-v1.mp4'
+const SCRUB_VIDEO_MOBILE_SRC = '/assets/rotation/3love-rotation-scrub-720p-v1.mp4'
 const POSTER_SRC = '/assets/rotation/3love-rotation-cosmic-drift-4k-poster.jpg'
 const CART_STORAGE_KEY = '3love-cart-v1'
+const SCRUB_FRAME_RATE = 24
+const SCRUB_FRAME_INTERVAL_MS = 1000 / SCRUB_FRAME_RATE
+const SCRUB_FRAME_EPSILON = 1 / (SCRUB_FRAME_RATE * 2)
 
 type CartItem = {
   productId: string
@@ -127,20 +131,10 @@ function sanitizeCartItems(value: unknown, productLookup: Map<string, Product>):
   }, [])
 }
 
-function syncVideoFrame(video: HTMLVideoElement, progress: number, duration: number) {
-  if (!Number.isFinite(duration) || duration <= 0) return
-
-  const safeDuration = Math.max(duration - 0.035, 0)
-  const nextTime = clamp(progress * safeDuration, 0.02, safeDuration)
-
-  if (Math.abs(video.currentTime - nextTime) <= 0.01) return
-
-  try {
-    video.currentTime = nextTime
-  } catch {
-    // Some browsers briefly reject seeks while restoring from cache or switching tabs.
-    // The next scroll/readiness tick will retry against the same target frame.
-  }
+function videoTimeForProgress(progress: number, duration: number) {
+  const safeDuration = Math.max(duration - (1 / SCRUB_FRAME_RATE), 0)
+  const exactTime = clamp(progress * safeDuration, 0, safeDuration)
+  return clamp(Math.round(exactTime * SCRUB_FRAME_RATE) / SCRUB_FRAME_RATE, 0, safeDuration)
 }
 
 export default function CinematicScrollExperience({
@@ -154,7 +148,6 @@ export default function CinematicScrollExperience({
   const sectionRef = useRef<HTMLElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const rafRef = useRef<number | null>(null)
-  const stopTimerRef = useRef<number | null>(null)
   const checkoutKeyRef = useRef<string | null>(null)
   const cartCloseRef = useRef<HTMLButtonElement | null>(null)
   const cartDrawerRef = useRef<HTMLElement | null>(null)
@@ -364,7 +357,7 @@ export default function CinematicScrollExperience({
     if (!section || !video) return
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const root = document.documentElement
+    const mobileViewport = window.matchMedia('(max-width: 767px)')
     const state = {
       current: 0,
       target: 0,
@@ -373,6 +366,8 @@ export default function CinematicScrollExperience({
       lastY: window.scrollY,
       lastTime: performance.now(),
       lastInput: performance.now(),
+      lastSeekAt: 0,
+      queuedTime: null as number | null,
       active: false,
       ready: false,
     }
@@ -387,21 +382,45 @@ export default function CinematicScrollExperience({
       const viewportHeight = window.visualViewport?.height ?? window.innerHeight
       const range = Math.max(rect.height - viewportHeight, 1)
       state.target = clamp(-rect.top / range, 0, 1)
-      root.style.setProperty('--film-target', state.target.toFixed(4))
+      section.style.setProperty('--film-target', state.target.toFixed(4))
     }
 
-    const writeFrame = () => {
-      if (state.ready) syncVideoFrame(video, state.current, readDuration())
-      root.style.setProperty('--film-progress', state.current.toFixed(4))
-      root.style.setProperty('--film-velocity', Math.min(Math.abs(state.velocity) / 2200, 1).toFixed(4))
+    const seekTo = (nextTime: number, now: number, force = false) => {
+      if (!state.ready || !Number.isFinite(nextTime)) return
+      if (Math.abs(video.currentTime - nextTime) <= SCRUB_FRAME_EPSILON) {
+        state.queuedTime = null
+        return
+      }
+
+      if (video.seeking || (!force && now - state.lastSeekAt < SCRUB_FRAME_INTERVAL_MS)) {
+        state.queuedTime = nextTime
+        return
+      }
+
+      state.queuedTime = null
+      state.lastSeekAt = now
+      try {
+        video.currentTime = nextTime
+      } catch {
+        state.queuedTime = nextTime
+      }
     }
 
-    const freeze = () => {
+    const writeFrame = (now: number, forceVideo = false) => {
+      section.style.setProperty('--film-progress', state.current.toFixed(4))
+      section.style.setProperty('--film-velocity', Math.min(Math.abs(state.velocity) / 2200, 1).toFixed(4))
+
+      const duration = readDuration()
+      if (state.ready && Number.isFinite(duration) && duration > 0) {
+        seekTo(videoTimeForProgress(state.current, duration), now, forceVideo)
+      }
+    }
+
+    const freeze = (now = performance.now()) => {
       state.current = state.target
       state.velocity = 0
       state.active = false
-      video.pause()
-      writeFrame()
+      writeFrame(now, true)
 
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current)
@@ -410,30 +429,18 @@ export default function CinematicScrollExperience({
     }
 
     const render = (now: number) => {
-      if (!state.active && !reduceMotion.matches) {
+      if (!state.active || reduceMotion.matches) {
         rafRef.current = null
         return
       }
 
       const timeSinceInput = now - state.lastInput
-      const speed = clamp(Math.abs(state.velocity) / 2200, 0, 1)
+      state.current = state.target
+      if (timeSinceInput > 96) state.velocity = 0
+      writeFrame(now, timeSinceInput > 96)
 
-      if (reduceMotion.matches || timeSinceInput > 82) {
-        state.current = state.target
-      } else {
-        const response = 0.18 + speed * 0.36
-        state.current += (state.target - state.current) * response
-      }
-
-      if (Math.abs(state.target - state.current) < 0.0006) {
-        state.current = state.target
-      }
-
-      video.pause()
-      writeFrame()
-
-      if (timeSinceInput > 82 && Math.abs(state.target - state.current) < 0.0006) {
-        freeze()
+      if (timeSinceInput > 96) {
+        freeze(now)
         return
       }
 
@@ -447,16 +454,18 @@ export default function CinematicScrollExperience({
     }
 
     const syncNow = (activate = true) => {
+      const now = performance.now()
       measureProgress()
       if (activate && !reduceMotion.matches) {
         state.active = true
-        state.lastInput = performance.now()
+        state.lastInput = now
         startLoop()
         return
       }
 
       state.current = state.target
-      writeFrame()
+      state.velocity = 0
+      writeFrame(now, true)
     }
 
     const onScroll = () => {
@@ -467,20 +476,42 @@ export default function CinematicScrollExperience({
       state.lastY = y
       state.lastTime = now
       state.lastInput = now
-      syncNow(!reduceMotion.matches)
+      measureProgress()
 
-      if (stopTimerRef.current !== null) window.clearTimeout(stopTimerRef.current)
-      stopTimerRef.current = window.setTimeout(freeze, 86)
+      if (reduceMotion.matches) {
+        state.current = state.target
+        state.velocity = 0
+        writeFrame(now)
+        return
+      }
+
+      state.active = true
+      startLoop()
     }
 
-    const onVideoReady = () => {
+    const onVideoMetadata = () => {
       state.duration = readDuration()
       state.ready = state.duration > 0 || video.readyState >= 1
       video.pause()
-      measureProgress()
-      state.current = state.target
-      writeFrame()
+      syncNow(false)
       setIsReady(true)
+    }
+
+    const onVideoError = () => {
+      state.ready = false
+      state.queuedTime = null
+      setIsReady(true)
+    }
+
+    const onSeeked = () => {
+      const queuedTime = state.queuedTime
+      if (queuedTime === null || Math.abs(video.currentTime - queuedTime) <= SCRUB_FRAME_EPSILON) {
+        state.queuedTime = null
+        return
+      }
+
+      state.queuedTime = null
+      seekTo(queuedTime, performance.now(), true)
     }
 
     const onResize = () => {
@@ -496,43 +527,55 @@ export default function CinematicScrollExperience({
       syncNow(false)
     }
 
-    const onUserInput = () => {
-      state.lastInput = performance.now()
-      syncNow(!reduceMotion.matches)
+    const selectedVideoSource = mobileViewport.matches ? SCRUB_VIDEO_MOBILE_SRC : SCRUB_VIDEO_DESKTOP_SRC
+    const loadVideo = () => {
+      state.ready = false
+      state.duration = 0
+      state.queuedTime = null
+      video.pause()
+      video.src = selectedVideoSource
+      video.preload = 'auto'
+      video.load()
+    }
+
+    const unloadVideo = () => {
+      state.ready = false
+      state.duration = 0
+      state.queuedTime = null
+      video.pause()
+      video.removeAttribute('src')
+      video.preload = 'none'
+      video.load()
+      syncNow(false)
+      setIsReady(true)
+    }
+
+    const onMotionPreferenceChange = () => {
+      if (reduceMotion.matches) {
+        unloadVideo()
+      } else {
+        setIsReady(false)
+        loadVideo()
+      }
     }
 
     video.pause()
-    video.preload = 'auto'
-    video.addEventListener('loadedmetadata', onVideoReady)
-    video.addEventListener('durationchange', onVideoReady)
-    video.addEventListener('loadeddata', onVideoReady)
-    video.addEventListener('canplay', onVideoReady)
+    video.preload = 'none'
+    video.addEventListener('loadedmetadata', onVideoMetadata)
+    video.addEventListener('error', onVideoError)
+    video.addEventListener('seeked', onSeeked)
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onResize, { passive: true })
     window.addEventListener('orientationchange', onResize, { passive: true })
     window.addEventListener('pageshow', onWake, { passive: true })
     window.addEventListener('focus', onWake, { passive: true })
     window.addEventListener('hashchange', onWake, { passive: true })
-    window.addEventListener('wheel', onUserInput, { passive: true })
-    window.addEventListener('touchmove', onUserInput, { passive: true })
     window.visualViewport?.addEventListener('resize', onResize, { passive: true })
     document.addEventListener('visibilitychange', onWake)
+    reduceMotion.addEventListener('change', onMotionPreferenceChange)
 
-    if (video.readyState >= 1) onVideoReady()
-    else video.load()
-
-    const watchdog = window.setInterval(() => {
-      if (document.visibilityState === 'hidden') return
-
-      const y = window.scrollY
-      if (Math.abs(y - state.lastY) > 0.5) {
-        onScroll()
-        return
-      }
-
-      measureProgress()
-      if (Math.abs(state.target - state.current) > 0.004) syncNow(true)
-    }, 240)
+    if (reduceMotion.matches) unloadVideo()
+    else loadVideo()
 
     const revealObserver = new IntersectionObserver(
       (entries) => {
@@ -554,24 +597,20 @@ export default function CinematicScrollExperience({
     }, 140)
 
     return () => {
-      video.removeEventListener('loadedmetadata', onVideoReady)
-      video.removeEventListener('durationchange', onVideoReady)
-      video.removeEventListener('loadeddata', onVideoReady)
-      video.removeEventListener('canplay', onVideoReady)
+      video.removeEventListener('loadedmetadata', onVideoMetadata)
+      video.removeEventListener('error', onVideoError)
+      video.removeEventListener('seeked', onSeeked)
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onResize)
       window.removeEventListener('orientationchange', onResize)
       window.removeEventListener('pageshow', onWake)
       window.removeEventListener('focus', onWake)
       window.removeEventListener('hashchange', onWake)
-      window.removeEventListener('wheel', onUserInput)
-      window.removeEventListener('touchmove', onUserInput)
       window.visualViewport?.removeEventListener('resize', onResize)
       document.removeEventListener('visibilitychange', onWake)
+      reduceMotion.removeEventListener('change', onMotionPreferenceChange)
       revealObserver.disconnect()
       window.clearTimeout(hashTimer)
-      window.clearInterval(watchdog)
-      if (stopTimerRef.current !== null) window.clearTimeout(stopTimerRef.current)
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
     }
   }, [])
@@ -625,10 +664,8 @@ export default function CinematicScrollExperience({
             poster={POSTER_SRC}
             muted
             playsInline
-            preload="auto"
-          >
-            <source src={BACKGROUND_VIDEO_SRC} type="video/mp4" />
-          </video>
+            preload="none"
+          />
           <div className="film-floor" />
           <div className="film-grade" />
           <div className="film-depth film-depth-left" />
