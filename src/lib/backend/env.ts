@@ -38,6 +38,21 @@ export const backendEnv = {
   shippingGbpPence: readNonNegativeInteger('SHIPPING_GBP_PENCE', 0),
 }
 
+/**
+ * The site URL builds Stripe's success_url and cancel_url. In production a
+ * missing NEXT_PUBLIC_SITE_URL would silently fall back to localhost and send
+ * paying customers nowhere, so refuse to build checkout URLs from it instead.
+ */
+export function requireSiteUrl() {
+  const value = backendEnv.siteUrl
+  if (process.env.NODE_ENV === 'production' && !value.startsWith('https://')) {
+    throw new Error(
+      'NEXT_PUBLIC_SITE_URL must be set to the public https:// origin in production.',
+    )
+  }
+  return value
+}
+
 export function requireBackendEnv(key: keyof typeof backendEnv) {
   const value = backendEnv[key]
   if (!value) throw new Error(`Missing required environment variable for ${key}`)

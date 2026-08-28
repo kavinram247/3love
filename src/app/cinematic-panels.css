@@ -57,7 +57,7 @@
 }
 
 .system-scene {
-  grid-template-columns: minmax(90px, 0.34fr) minmax(320px, 650px) minmax(260px, 0.66fr);
+  grid-template-columns: minmax(320px, 650px) minmax(260px, 0.66fr);
   align-items: center;
   gap: clamp(30px, 6vw, 96px);
 }
@@ -661,6 +661,11 @@
   border-bottom: 1px solid rgba(247, 242, 255, 0.1);
 }
 
+/* Note lines no longer carry a leading numeral, so they run full width. */
+.note-line {
+  grid-template-columns: 1fr;
+}
+
 .phase-line span {
   width: clamp(54px, 8vw, 104px);
   color: rgba(224, 170, 255, 0.62);
@@ -1121,8 +1126,57 @@
     padding: 8px 10px 8px 14px;
   }
 
+  /* The links become a panel under the pill instead of disappearing, so Buy
+     and Sign in stay reachable on a phone. */
   .nav-links {
-    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    right: 0;
+    z-index: 2;
+    display: grid;
+    grid-auto-flow: row;
+    justify-content: stretch;
+    gap: 0;
+    padding: 6px;
+    border: 1px solid rgba(247, 242, 255, 0.12);
+    border-radius: 22px;
+    background: rgba(9, 4, 14, 0.96);
+    box-shadow: 0 26px 60px rgba(3, 1, 6, 0.6);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition:
+      opacity 260ms var(--ease-out-expo),
+      transform 260ms var(--ease-out-expo),
+      visibility 0s linear 260ms;
+  }
+
+  .cinema-nav.is-menu-open .nav-links {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    transition:
+      opacity 260ms var(--ease-out-expo),
+      transform 260ms var(--ease-out-expo),
+      visibility 0s linear 0s;
+  }
+
+  .nav-links a {
+    padding: 13px 14px;
+    border-radius: 14px;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-align: left;
+  }
+
+  .nav-links a:hover,
+  .nav-links a:focus-visible {
+    background: rgba(247, 242, 255, 0.07);
+  }
+
+  .nav-menu-toggle {
+    display: inline-flex;
   }
 
   .time-hud {
@@ -1227,7 +1281,7 @@
     font-size: clamp(4.5rem, 28vw, 9rem);
   }
 
-  .hero-panel h1 {
+  .hero-panel h2 {
     font-size: clamp(4.2rem, 21vw, 8rem);
   }
 
@@ -2042,4 +2096,328 @@
   .commerce-inline-form {
     justify-content: flex-start;
   }
+}
+
+/* ---- Environments ---------------------------------------------------------
+   Three floating environments, one per composition. Entering one expands it
+   and reveals its price and add-to-cart. The photograph sits on .environment-art
+   over a per-environment gradient painted on the card, so the panel still reads
+   correctly before the art files are in place.                              */
+
+.environment-panel-section {
+  grid-template-columns: 1fr;
+  align-content: center;
+  gap: clamp(38px, 5vw, 64px);
+}
+
+.environment-heading {
+  max-width: 680px;
+}
+
+.environment-heading > p:not(.micro-label) {
+  margin: clamp(18px, 2.4vw, 28px) 0 0;
+  color: rgba(247, 242, 255, 0.62);
+  font-size: clamp(0.98rem, 1.2vw, 1.14rem);
+  line-height: 1.8;
+  text-transform: none;
+  letter-spacing: 0;
+  text-wrap: pretty;
+}
+
+.environment-rail {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: clamp(14px, 1.6vw, 24px);
+  width: 100%;
+  min-height: clamp(420px, 52vh, 580px);
+}
+
+.environment-card {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(247, 242, 255, 0.12);
+  border-radius: 26px;
+  box-shadow:
+    0 34px 80px rgba(3, 1, 6, 0.62),
+    inset 0 1px 0 rgba(247, 242, 255, 0.1);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  transition:
+    flex-grow 760ms var(--ease-out-expo),
+    opacity 520ms var(--ease-out-expo),
+    border-color 520ms var(--ease-out-expo);
+}
+
+.environment-card.is-active {
+  flex-grow: 2.8;
+  border-color: rgb(var(--accent-rgb) / 0.5);
+}
+
+.environment-card.is-dimmed {
+  opacity: 0.42;
+}
+
+/* Gradient stand-ins, keyed to each scene's own light. */
+.environment-card[data-env='stars-in-sanremo'] {
+  background-image:
+    radial-gradient(46% 36% at 78% 26%, rgba(255, 214, 140, 0.5), transparent 62%),
+    linear-gradient(184deg, #0a0918 0%, #1d1636 44%, #40284a 74%, #6d4a48 100%);
+}
+
+.environment-card[data-env='garden-of-eve'] {
+  background-image:
+    radial-gradient(40% 32% at 54% 44%, rgba(255, 206, 132, 0.62), transparent 64%),
+    linear-gradient(186deg, #2a1330 0%, #5d2a55 38%, #9d5070 68%, #331a2c 100%);
+}
+
+.environment-card[data-env='mediterranean-breeze'] {
+  background-image:
+    radial-gradient(44% 36% at 74% 40%, rgba(255, 226, 150, 0.66), transparent 62%),
+    linear-gradient(188deg, #7a4a1c 0%, #c07f2c 34%, #e2a54c 60%, #2b190c 100%);
+}
+
+.environment-art {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  transform: scale(1.04);
+  transition: transform 900ms var(--ease-out-expo);
+}
+
+.environment-card.is-active .environment-art {
+  transform: scale(1);
+}
+
+/* Keeps the copy legible whatever the photograph is doing behind it. */
+.environment-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    linear-gradient(180deg, rgba(5, 2, 8, 0.32) 0%, rgba(5, 2, 8, 0.06) 34%, rgba(5, 2, 8, 0.88) 100%);
+}
+
+.environment-body {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  height: 100%;
+  padding: clamp(22px, 2.4vw, 34px);
+  gap: 10px;
+}
+
+.environment-body h3 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: clamp(1.9rem, 2.6vw, 2.9rem);
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: none;
+}
+
+.environment-quote {
+  margin: 0;
+  max-width: 34ch;
+  color: rgba(247, 242, 255, 0.74);
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.68;
+  letter-spacing: 0;
+  text-transform: none;
+  text-wrap: pretty;
+}
+
+.environment-enter {
+  margin-top: 6px;
+  padding: 11px 18px;
+  border: 1px solid rgba(247, 242, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(10, 5, 16, 0.46);
+  color: var(--ink);
+  font-family: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  transition: background 320ms ease, border-color 320ms ease;
+}
+
+.environment-enter:hover {
+  border-color: rgb(var(--accent-rgb) / 0.7);
+  background: rgba(10, 5, 16, 0.72);
+}
+
+.environment-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.environment-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.environment-notes em {
+  color: rgba(247, 242, 255, 0.7);
+  font-family: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  font-style: normal;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.environment-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+
+.environment-meta span {
+  color: rgba(247, 242, 255, 0.6);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.environment-meta strong {
+  color: var(--ink);
+  font-size: clamp(1.1rem, 1.5vw, 1.4rem);
+  letter-spacing: 0.04em;
+}
+
+.environment-add-button {
+  width: auto;
+  min-width: min(260px, 100%);
+}
+
+.environment-leave {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .environment-card,
+  .environment-art {
+    transition: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .environment-rail {
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .environment-card {
+    flex: none;
+    min-height: clamp(300px, 46vh, 400px);
+  }
+
+  .environment-card.is-active {
+    min-height: clamp(430px, 62vh, 560px);
+  }
+
+  .environment-card.is-dimmed {
+    opacity: 0.55;
+  }
+}
+
+/* ---- Environment detail copy ---------------------------------------------
+   The full composition text is long, so an entered card scrolls its own body
+   rather than clipping or pushing the card out of the rail.                 */
+
+.environment-card.is-active .environment-body {
+  justify-content: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.environment-timemark {
+  color: rgba(247, 242, 255, 0.6);
+  font-size: 0.52em;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.environment-concentration {
+  margin: 0;
+  color: rgb(var(--accent-rgb) / 0.94);
+  font-family: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.environment-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin-top: 2px;
+}
+
+.environment-copy p {
+  margin: 0;
+  max-width: 52ch;
+  color: rgba(247, 242, 255, 0.74);
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.88rem;
+  font-weight: 400;
+  line-height: 1.76;
+  letter-spacing: 0;
+  text-transform: none;
+  text-wrap: pretty;
+}
+
+.environment-copy strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.environment-copy p.environment-lede {
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.environment-copy p.environment-collaboration {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.environment-notes-label {
+  margin: 6px 0 0;
+}
+
+.environment-signature {
+  margin: 0;
+  max-width: 46ch;
+  color: rgba(247, 242, 255, 0.74);
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: clamp(1rem, 1.3vw, 1.18rem);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.5;
+  text-transform: none;
 }

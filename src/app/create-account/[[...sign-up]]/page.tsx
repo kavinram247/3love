@@ -32,6 +32,8 @@ export default async function CreateAccountPage({
               rootBox: 'clerk-auth-root',
               cardBox: 'clerk-auth-card-box',
               card: 'clerk-auth-card',
+              // The page already carries its own heading above the widget.
+              header: 'clerk-auth-hidden-header',
             },
           }}
         />

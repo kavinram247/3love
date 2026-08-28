@@ -55,6 +55,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${syne.variable} ${manrope.variable} ${cormorant.variable}`}>
       <body>
         <ClerkProvider
+          // Off by choice: it is the one thing that trips the CSP, and it sends
+          // usage data to a third party we have no reason to feed.
+          telemetry={false}
           appearance={{
             variables: {
               colorPrimary: '#b78af5',

@@ -8,11 +8,14 @@ import { ClerkLoaded, ClerkLoading, Show } from '@clerk/nextjs'
 import { BOTTLE_SCENE_SRC, products as fallbackProducts } from '@/lib/products'
 import type { Product } from '@/lib/products'
 import { formatGbp } from '@/lib/backend/format'
+import EnvironmentPanel from '@/components/EnvironmentPanel'
 
 const SCRUB_VIDEO_DESKTOP_SRC = '/assets/rotation/3love-rotation-scrub-1080p-v1.mp4'
 const SCRUB_VIDEO_MOBILE_SRC = '/assets/rotation/3love-rotation-scrub-720p-v1.mp4'
 const POSTER_SRC = '/assets/rotation/3love-rotation-cosmic-drift-4k-poster.jpg'
 const CART_STORAGE_KEY = '3love-cart-v1'
+/** Every refresh holds on the intro before the site is revealed. */
+const INTRO_DURATION_MS = 6000
 const SCRUB_FRAME_RATE = 24
 const SCRUB_FRAME_INTERVAL_MS = 1000 / SCRUB_FRAME_RATE
 const SCRUB_FRAME_EPSILON = 1 / (SCRUB_FRAME_RATE * 2)
@@ -53,29 +56,29 @@ const systemScenes: SystemScene[] = [
   },
   {
     id: 'emotion',
-    eyebrow: 'SECTION_01 / THE TRIGGER',
+    eyebrow: '01 / EMOTION',
     index: '01',
     mood: 'emotion',
-    title: 'Every connection begins as a feeling.',
-    body: 'Attraction arrives before language. It flickers, pulls, and destabilizes the room.',
+    title: 'The bottle appears.',
+    body: 'Untouched. Pure. A subtle pulse begins.',
     fragments: ['Instinct', 'Tension', 'Curiosity'],
   },
   {
     id: 'experience',
-    eyebrow: 'SECTION_02 / THE SEQUENCE',
+    eyebrow: '02 / EXPERIENCE',
     index: '02',
     mood: 'experience',
-    title: 'Experience transforms emotion into memory.',
-    body: 'Layer by layer, movement becomes intention. The system begins to orchestrate what the body already knows.',
+    title: 'The system awakens.',
+    body: '3V reveals itself. Particles begin to separate.',
     fragments: ['Texture', 'Diffusion', 'Sequence'],
   },
   {
     id: 'memory',
-    eyebrow: 'SECTION_03 / THE IMPRINT',
+    eyebrow: '03 / MEMORY',
     index: '03',
     mood: 'memory',
-    title: 'Memory is what remains.',
-    body: 'The motion fades. The signal softens. Something from the experience refuses to leave.',
+    title: 'The bottle moves on.',
+    body: 'Its memory remains. The impression stays.',
     fragments: ['Reflection', 'Archive', 'Afterimage'],
   },
 ]
@@ -151,9 +154,14 @@ export default function CinematicScrollExperience({
   const checkoutKeyRef = useRef<string | null>(null)
   const cartCloseRef = useRef<HTMLButtonElement | null>(null)
   const cartDrawerRef = useRef<HTMLElement | null>(null)
+  const serverCartReadRef = useRef(false)
+  const isInitialCartSyncRef = useRef(true)
   const [isReady, setIsReady] = useState(false)
+  const [introComplete, setIntroComplete] = useState(false)
+  const [introHoldMs, setIntroHoldMs] = useState(INTRO_DURATION_MS)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [isCartOpen, setIsCartOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [checkoutNote, setCheckoutNote] = useState('')
   const [hasLoadedCart, setHasLoadedCart] = useState(false)
   const [checkoutState, setCheckoutState] = useState<CheckoutState>({ isLoading: false, error: '' })
@@ -257,6 +265,40 @@ export default function CinematicScrollExperience({
     }, 120)
   }
 
+  // The intro gate holds for a fixed beat on every load, and locks the page
+  // behind it so the site is not scrolled while it is still covered.
+  useEffect(() => {
+    // Measured from navigation start, not from mount, so the hold is the same
+    // length whatever hydration cost — and never compounds on a slow load.
+    const elapsed = performance.now()
+    const remaining = Math.max(INTRO_DURATION_MS - elapsed, 0)
+    setIntroHoldMs(remaining)
+    const timer = window.setTimeout(() => setIntroComplete(true), remaining)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    if (introComplete) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [introComplete])
+
+  // Escape closes the mobile menu, matching the cart drawer.
+  useEffect(() => {
+    if (!isMenuOpen) return
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMenuOpen(false)
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [isMenuOpen])
+
   useEffect(() => {
     let isCancelled = false
     let localItems: CartItem[] = []
@@ -272,6 +314,10 @@ export default function CinematicScrollExperience({
     fetch('/api/cart')
       .then(async (response) => {
         if (!response.ok) return null
+        // Only once the server cart has actually been read is it safe to write
+        // back over it. Otherwise a failed read would persist an empty local
+        // cart and destroy what the customer had saved.
+        serverCartReadRef.current = true
         return response.json() as Promise<{ items?: CartItem[] }>
       })
       .then((payload) => {
@@ -304,6 +350,16 @@ export default function CinematicScrollExperience({
       // Storage can fail in restricted browser contexts; the cart still works for the active session.
     }
 
+    // Never write back a cart we could not first read — see serverCartReadRef.
+    if (!serverCartReadRef.current) return
+
+    // The first pass after loading is the state we just synced, so writing it
+    // back would only put an empty cart on the server for every visitor.
+    if (isInitialCartSyncRef.current) {
+      isInitialCartSyncRef.current = false
+      return
+    }
+
     fetch('/api/cart', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -323,7 +379,12 @@ export default function CinematicScrollExperience({
 
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    cartCloseRef.current?.focus()
+    const focusFrame = requestAnimationFrame(() => cartCloseRef.current?.focus())
+
+    // The skip link is rendered by the layout, outside the sections marked
+    // inert above, so it would otherwise stay tabbable from inside the dialog.
+    const skipLink = document.querySelector('.skip-link')
+    skipLink?.setAttribute('inert', '')
 
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setIsCartOpen(false)
@@ -346,6 +407,8 @@ export default function CinematicScrollExperience({
 
     window.addEventListener('keydown', closeOnEscape)
     return () => {
+      cancelAnimationFrame(focusFrame)
+      skipLink?.removeAttribute('inert')
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', closeOnEscape)
     }
@@ -617,23 +680,33 @@ export default function CinematicScrollExperience({
 
   return (
     <main id="main-content" className="cinematic-site">
-      <section id="brand" className="brand-gateway" aria-label="3love brand philosophy" data-reveal>
+      <div
+        className={`intro-gate ${introComplete ? 'is-complete' : ''}`}
+        style={{ '--intro-duration': `${introHoldMs}ms` } as CSSProperties}
+        role="status"
+        aria-live="polite"
+      >
+        <div className="intro-gate-inner">
+          <Image src="/logo.jpg" alt="" width={132} height={54} priority />
+          <p className="micro-label">3V-L0V3 / SYSTEM ENGAGED</p>
+          <div className="intro-progress" aria-hidden="true"><span /></div>
+          <p className="intro-status">Initializing memory system</p>
+        </div>
+      </div>
+
+      <section id="brand" className="brand-gateway" aria-label="3love brand philosophy" data-reveal inert={isCartOpen ? true : undefined}>
         <div className="brand-cosmos" aria-hidden="true">
           <span />
           <span />
           <span />
         </div>
         <div className="brand-gateway-copy">
-          <p className="micro-label">3LOVE / BRAND SYSTEM</p>
+          <p className="micro-label">3V-L0V3 / SYSTEM ENGAGED</p>
           <h1>A fragrance house for emotional memory.</h1>
           <p>
             Emotion becomes experience. Experience becomes memory.
           </p>
           <div className="brand-gateway-actions">
-            <a className="cinema-button" href="#hero">
-              <span>Enter the scroll film</span>
-              <i>↓</i>
-            </a>
             <a className="quiet-link" href="#phase-01">View Phase 01</a>
           </div>
         </div>
@@ -641,22 +714,34 @@ export default function CinematicScrollExperience({
           <article>
             <span>01</span>
             <strong>Emotion</strong>
-            <p>The trigger before language. A first pull, felt before it is understood.</p>
+            <p>
+              Begins somewhere within us.<br />
+              Long before we understand why.<br />
+              Some feelings find their words. Others never need to.
+            </p>
           </article>
           <article>
             <span>02</span>
             <strong>Experience</strong>
-            <p>The sequence that gives the feeling structure, rhythm, and atmosphere.</p>
+            <p>
+              We pass through life as it passes through us.<br />
+              Every encounter leaves something behind.<br />
+              We are never quite who we were before.
+            </p>
           </article>
           <article>
             <span>03</span>
             <strong>Memory</strong>
-            <p>The imprint that remains after the scene has disappeared.</p>
+            <p>
+              Some moments pass. Some stay with us.<br />
+              Time changes the details, but rarely the feeling.<br />
+              Perhaps remembering is simply how we carry what remains.
+            </p>
           </article>
         </div>
       </section>
 
-      <section ref={sectionRef} id="hero" className="film-scroll" aria-label="3love cinematic scroll experience">
+      <section ref={sectionRef} id="hero" className="film-scroll" aria-label="3love cinematic scroll experience" inert={isCartOpen ? true : undefined}>
         <div className="film-stage" aria-hidden="true">
           <video
             ref={videoRef}
@@ -667,6 +752,10 @@ export default function CinematicScrollExperience({
             preload="none"
           />
           <div className="film-floor" />
+          <div className="film-pulse" />
+          <div className="film-sheen" />
+          <div className="film-particles film-particles-dust" />
+          <div className="film-particles film-particles-stars" />
           <div className="film-grade" />
           <div className="film-depth film-depth-left" />
           <div className="film-depth film-depth-right" />
@@ -682,18 +771,29 @@ export default function CinematicScrollExperience({
           <p>Initializing memory system</p>
         </div>
 
-        <nav className="cinema-nav" aria-label="Primary navigation">
+        <nav className={`cinema-nav ${isMenuOpen ? 'is-menu-open' : ''}`} aria-label="Primary navigation">
           <a href="#brand" className="brand-lockup" aria-label="3love home">
             <Image src="/logo.jpg" alt="3love" width={92} height={38} priority />
           </a>
-          <div className="nav-links">
+          <button
+            className="nav-menu-toggle"
+            type="button"
+            aria-expanded={isMenuOpen}
+            aria-controls="primary-nav-links"
+            aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+            onClick={() => setIsMenuOpen((open) => !open)}
+          >
+            <span />
+            <span />
+          </button>
+          <div id="primary-nav-links" className="nav-links" onClick={() => setIsMenuOpen(false)}>
             <a href="#brand">Brand</a>
             <a href="#system">System</a>
             <a href="#experience">Experience</a>
             <a href="#memory">Memory</a>
             <a href="#phase-01">Phase 01</a>
             <a href="#buy" className="nav-buy-link">Buy</a>
-            <ClerkLoading><Link href="/login">Account</Link></ClerkLoading>
+            <ClerkLoading><Link href="/login">Sign in</Link></ClerkLoading>
             <ClerkLoaded>
               <Show when="signed-in" fallback={<Link href="/login">Sign in</Link>}>
                 <Link href="/account">Account</Link>
@@ -736,15 +836,6 @@ export default function CinematicScrollExperience({
                 )}
               </div>
             </div>
-            <button
-              className="sound-pill"
-              type="button"
-              disabled
-              title="Ambient sound asset pending"
-              aria-label="Ambient sound pending"
-            >
-              Sound
-            </button>
             <div className="time-hud">
               <span>Scroll controls time</span>
               <i />
@@ -754,16 +845,11 @@ export default function CinematicScrollExperience({
 
         <div className="story-rail">
           <article className="story-panel hero-panel entry-panel" data-reveal>
-            <div className="entry-field" aria-hidden="true">
-              <span>emotion</span>
-              <span>experience</span>
-              <span>memory</span>
-            </div>
             <p className="micro-label">3V-L0V3 / ENTRY</p>
-            <h1>
+            <h2>
               3 Versions
               <span>of Love</span>
-            </h1>
+            </h2>
             <p className="hero-copy">
               A system that engineers emotional memory through evolving experiences.
             </p>
@@ -780,18 +866,12 @@ export default function CinematicScrollExperience({
               className={`story-panel system-scene scene-${scene.mood}`}
               data-reveal
             >
-              <div className="scene-index">{scene.index}</div>
               <div className="copy-block">
                 <p className="micro-label">{scene.eyebrow}</p>
                 <h2>{scene.title}</h2>
                 <p>{scene.body}</p>
               </div>
               <div className="scene-field" aria-hidden="true">
-                {scene.fragments.map((fragment, index) => (
-                  <span key={fragment} style={{ '--fragment-index': index } as CSSProperties}>
-                    {fragment}
-                  </span>
-                ))}
                 <i />
               </div>
             </article>
@@ -844,36 +924,35 @@ export default function CinematicScrollExperience({
               <p className="micro-label">PHASE_01 / CLOSER LOOK</p>
               <h2>The first artifact.</h2>
               <p>
-                One composition holds the system. The image stays physical,
+                Three compositions share one vessel. The image stays physical,
                 clear, and cinematic.
               </p>
             </div>
 
             <div className="artifact-screen" aria-label={`${featuredProduct.name} artifact preview`}>
               <div className="artifact-screen-chrome" aria-hidden="true">
-                <span>single artifact</span>
+                <span>the vessel</span>
                 <i />
                 <span>{featuredProduct.phase}</span>
               </div>
               <div className="artifact-image-stage">
-                <Image src={BOTTLE_SCENE_SRC} alt="" aria-hidden="true" fill sizes="(max-width: 900px) 100vw, 86vw" />
+                {/* Unoptimized on purpose: this is the same file the video
+                    poster and the gateway background already load, so serving
+                    it raw reuses that download instead of fetching a second,
+                    re-encoded copy at up to 3840px wide. */}
+                <Image src={BOTTLE_SCENE_SRC} alt="" aria-hidden="true" fill sizes="(max-width: 900px) 100vw, 86vw" unoptimized />
               </div>
               <div className="artifact-spec">
-                <p>{featuredProduct.phase} / {featuredProduct.concept}</p>
-                <h3>{featuredProduct.name}</h3>
-                <span>{featuredProduct.quote}</span>
+                <p>{featuredProduct.phase} / Three compositions</p>
+                <h3>One vessel.</h3>
+                <span>Every composition arrives in the same form. What changes is the world it came from.</span>
                 <div className="artifact-note-row">
-                  {featuredProduct.notes.map((note) => <em key={note}>{note}</em>)}
+                  {activeProducts.map((product) => <em key={product.id}>{product.name}</em>)}
                 </div>
-                <button
-                  className="cart-add-button artifact-add-button"
-                  type="button"
-                  onClick={() => addProductToCart(featuredProduct.id)}
-                  disabled={featuredProduct.availableStock <= 0}
-                >
-                  <span>{featuredProduct.availableStock > 0 ? `${formatGbp(featuredProduct.priceGbpPence)} · Add to cart` : 'Currently unavailable'}</span>
-                  <i>+</i>
-                </button>
+                <a className="cinema-button artifact-add-button" href="#compositions">
+                  <span>Choose your environment</span>
+                  <i>↗</i>
+                </a>
               </div>
             </div>
 
@@ -896,9 +975,8 @@ export default function CinematicScrollExperience({
               </p>
             </div>
             <div className="note-stack">
-              {noteStack.map((note, index) => (
+              {noteStack.map((note) => (
                 <div key={note.tier} className="note-line">
-                  <span>0{index + 1}</span>
                   <div>
                     <p>{note.tier} <small>{note.label}</small></p>
                     <strong>{note.copy}</strong>
@@ -909,51 +987,7 @@ export default function CinematicScrollExperience({
             </div>
           </article>
 
-          <article id="compositions" className="story-panel product-panel" data-reveal>
-            <div className="product-heading">
-              <p className="micro-label">PHASE_01 / SINGLE PRODUCT</p>
-              <h2>The first physical outcome.</h2>
-              <p>
-                Each active composition is priced from the live catalog and checked
-                against available inventory before Stripe opens.
-              </p>
-            </div>
-            <div className="product-grid product-grid-single">
-              {activeProducts.map((product) => (
-                <article
-                  key={product.id}
-                  className="scent-card"
-                  style={{ '--accent-rgb': product.accent } as CSSProperties}
-                >
-                  <div id="buy" className="product-buy-plate" aria-label={`${product.name} purchase`}>
-                    <span>Now available</span>
-                    <strong>{product.name} / {product.volume} / {formatGbp(product.priceGbpPence)}</strong>
-                    <button
-                      className="cart-add-button product-add-button"
-                      type="button"
-                      onClick={() => addProductToCart(product.id)}
-                      disabled={product.availableStock <= 0}
-                    >
-                      <span>{product.availableStock > 0 ? 'Add to cart' : 'Unavailable'}</span>
-                      <i>+</i>
-                    </button>
-                  </div>
-                  <div className="scent-content">
-                    <p>{product.phase} / {product.concept}</p>
-                    <h3>{product.name}</h3>
-                    <small>{product.quote}</small>
-                    <div className="note-row">
-                      {product.notes.map((note) => <em key={note}>{note}</em>)}
-                    </div>
-                    <div className="scent-meta">
-                      <strong>{product.volume}</strong>
-                      <span>{product.stockLabel}</span>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </article>
+          <EnvironmentPanel products={activeProducts} onAddToCart={addProductToCart} />
 
           <article id="enter" className="story-panel final-panel" data-reveal>
             <p className="micro-label">FINAL / ENTER PHASE_01</p>

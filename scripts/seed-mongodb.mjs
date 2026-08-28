@@ -1,5 +1,54 @@
-import { randomUUID } from 'node:crypto'
 import { ensureIndexes, withDb } from './mongodb-utils.mjs'
+
+const ENVIRONMENT_IMAGE_BASE = '/assets/environments'
+const BOTTLE_POSTER = '/assets/rotation/3love-rotation-cosmic-drift-4k-poster.jpg'
+
+/** Keep these aligned with src/lib/products.ts so the static fallback and the
+ *  database agree on slugs, SKUs and variant ids. */
+const catalogue = [
+  {
+    slug: 'stars-in-sanremo',
+    name: 'Stars in Sanremo',
+    concept: 'Emotion',
+    phase: 'Phase I',
+    quote: 'The night opens and something begins.',
+    notes: ['Sea Salt', 'Night Jasmine', 'Amber'],
+    description: 'A night on the Ligurian coast: salt air, lantern light, the sea holding the moon.',
+    accent: '150 132 224',
+    sortOrder: 1,
+    isFeatured: true,
+    variantId: 'stars-in-sanremo-50ml',
+    sku: '3LOVE-SANREMO-50ML',
+  },
+  {
+    slug: 'garden-of-eve',
+    name: 'Garden of Eve',
+    concept: 'Experience',
+    phase: 'Phase I',
+    quote: 'Everything in bloom, and nothing yet named.',
+    notes: ['Wisteria', 'Rose Absolute', 'White Musk'],
+    description: 'A garden at dusk, heavy with wisteria and rose, before anything has been decided.',
+    accent: '206 132 188',
+    sortOrder: 2,
+    isFeatured: false,
+    variantId: 'garden-of-eve-50ml',
+    sku: '3LOVE-EVE-50ML',
+  },
+  {
+    slug: 'mediterranean-breeze',
+    name: 'Mediterranean Breeze',
+    concept: 'Memory',
+    phase: 'Phase I',
+    quote: 'The light stays long after the day has gone.',
+    notes: ['Bergamot', 'Lemon Leaf', 'Cedarwood'],
+    description: 'A cliff road above the water at golden hour: citrus groves, warm stone, open sea.',
+    accent: '230 170 84',
+    sortOrder: 3,
+    isFeatured: false,
+    variantId: 'mediterranean-breeze-50ml',
+    sku: '3LOVE-MEDITERRANEAN-50ML',
+  },
+]
 
 await withDb(async (db) => {
   await ensureIndexes(db)
@@ -7,45 +56,55 @@ await withDb(async (db) => {
   const now = new Date()
   const products = db.collection('products')
 
-  await products.updateOne(
-    { slug: 'eclat' },
-    {
-      $set: {
-        slug: 'eclat',
-        name: 'Éclat',
-        concept: 'Self Love',
-        phase: 'Phase I',
-        quote: 'The love you give yourself echoes forever.',
-        notes: ['Lavender Haze', 'Nu Absolute', 'White Musk'],
-        description: 'The first physical artifact of Phase 01.',
-        imageSrc: '/assets/rotation/3love-rotation-cosmic-drift-4k-poster.jpg',
-        sceneSrc: '/assets/rotation/3love-rotation-cosmic-drift-4k-poster.jpg',
-        accent: '176 122 255',
-        status: 'ACTIVE',
-        isFeatured: true,
-        sortOrder: 1,
-        updatedAt: now,
-      },
-      $setOnInsert: {
-        variants: [{
-          id: randomUUID(),
-          sku: '3LOVE-ECLAT-50ML',
-          name: '50ML',
-          volume: '50ML',
-          stripePriceId: null,
-          priceGbpPence: 12000,
-          currency: 'gbp',
-          stockOnHand: 100,
-          stockReserved: 0,
-          isActive: true,
-          createdAt: now,
+  for (const item of catalogue) {
+    await products.updateOne(
+      { slug: item.slug },
+      {
+        $set: {
+          slug: item.slug,
+          name: item.name,
+          concept: item.concept,
+          phase: item.phase,
+          quote: item.quote,
+          notes: item.notes,
+          description: item.description,
+          imageSrc: BOTTLE_POSTER,
+          sceneSrc: `${ENVIRONMENT_IMAGE_BASE}/${item.slug}.jpg`,
+          accent: item.accent,
+          status: 'ACTIVE',
+          isFeatured: item.isFeatured,
+          sortOrder: item.sortOrder,
           updatedAt: now,
-        }],
-        createdAt: now,
+        },
+        $setOnInsert: {
+          variants: [{
+            id: item.variantId,
+            sku: item.sku,
+            name: '50ML',
+            volume: '50ML',
+            stripePriceId: null,
+            priceGbpPence: 12000,
+            currency: 'gbp',
+            stockOnHand: 100,
+            stockReserved: 0,
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+          }],
+          createdAt: now,
+        },
       },
-    },
-    { upsert: true },
+      { upsert: true },
+    )
+  }
+
+  // Éclat has been superseded by the three environment compositions. Archiving
+  // rather than deleting keeps any existing orders readable.
+  const retired = await products.updateOne(
+    { slug: 'eclat' },
+    { $set: { status: 'ARCHIVED', isFeatured: false, updatedAt: now } },
   )
 
-  console.log('MongoDB seed complete: Éclat is ready.')
+  console.log(`MongoDB seed complete: ${catalogue.length} compositions ready.`)
+  if (retired.matchedCount > 0) console.log('Éclat archived.')
 })

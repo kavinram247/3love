@@ -217,6 +217,11 @@ a:active {
   max-width: 1120px;
 }
 
+/* Extra air between the label and the title on the opening screen. */
+.brand-gateway-copy .micro-label {
+  margin-bottom: clamp(38px, 4.5vw, 60px);
+}
+
 .brand-gateway h1 {
   max-width: 1050px;
   margin: 0;
@@ -231,7 +236,7 @@ a:active {
 
 .brand-gateway-copy > p:not(.micro-label) {
   max-width: 640px;
-  margin: clamp(28px, 4vw, 44px) 0 0;
+  margin: clamp(42px, 5.5vw, 72px) 0 0;
   color: rgba(247, 242, 255, 0.64);
   font-size: clamp(1rem, 1.35vw, 1.24rem);
   line-height: 1.82;
@@ -243,7 +248,7 @@ a:active {
   flex-wrap: wrap;
   align-items: center;
   gap: 24px;
-  margin-top: clamp(34px, 4.8vw, 58px);
+  margin-top: clamp(54px, 7vw, 92px);
 }
 
 .brand-principles {
@@ -293,12 +298,19 @@ a:active {
   letter-spacing: 0;
   line-height: 1.72;
   text-transform: none;
+  text-wrap: pretty;
 }
 
 .film-scroll {
   position: relative;
   isolation: isolate;
   background: var(--void);
+
+  /* Defaults so the scroll-driven layers resolve before the scroll handler
+     writes its first frame. JS sets these inline, which wins over this. */
+  --film-progress: 0;
+  --film-target: 0;
+  --film-velocity: 0;
 }
 
 .film-stage {
@@ -327,6 +339,82 @@ a:active {
     saturate(1.12)
     contrast(1.05)
     brightness(0.98);
+  /* The artifact recedes past 78%, leaving the trace behind it. */
+  opacity: clamp(0.46, calc(1 - (var(--film-progress) - 0.78) * 2.4), 1);
+}
+
+/* ---- Scroll journey layers -------------------------------------------------
+   All driven by --film-progress (0 → 1), which the scroll handler writes to the
+   section each frame. Timings follow the bottle-transformation board:
+   20% the pulse begins · 40% the 3V catches the light and particles start ·
+   80% the bottle recedes · 100% the trace remains.
+   Layers sit at z-index 4: above the video (3), below the colour grade (5). */
+
+.film-pulse,
+.film-sheen,
+.film-particles {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  will-change: opacity, transform;
+}
+
+/* SUBTLE PULSE — a low-intensity emissive glow that breathes inside the bottle. */
+.film-pulse {
+  inset: 0;
+  opacity: clamp(0, calc((var(--film-progress) - 0.18) * 2.4), 1);
+  background: radial-gradient(34% 26% at 50% 50%, rgba(203, 156, 255, 0.34), transparent 64%);
+  animation: film-pulse-breathe 4.6s ease-in-out infinite;
+}
+
+@keyframes film-pulse-breathe {
+  0%,
+  100% {
+    transform: scale(0.94);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+/* 3V REVEAL — a light sweep crossing the bottle around mid-scroll, so the
+   detail is revealed by light and angle rather than drawn on top. */
+.film-sheen {
+  inset: 0;
+  opacity: clamp(0, calc((var(--film-progress) - 0.3) * 3.4), 0.85);
+  background: linear-gradient(104deg, transparent 44%, rgba(238, 218, 255, 0.14) 50%, transparent 56%);
+  transform: translate3d(calc((var(--film-progress) - 0.5) * 70vw), 0, 0);
+}
+
+/* PARTICLE DRIFT / MEMORY REMAINS — dust separates from the artifact and stays
+   after it has moved on. Uses the existing cosmic plates. */
+.film-particles {
+  inset: -12%;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+}
+
+.film-particles-dust {
+  background-image: url('/assets/cosmic/3love-cosmic-dust-4k.png');
+  opacity: clamp(0, calc((var(--film-progress) - 0.36) * 1.8), 0.7);
+  transform:
+    translate3d(calc((var(--film-progress) - 0.36) * 8vw), calc((var(--film-progress) - 0.36) * -6vh), 0)
+    scale(calc(1 + (var(--film-progress) - 0.36) * 0.2));
+}
+
+.film-particles-stars {
+  background-image: url('/assets/cosmic/3love-cosmic-stars-4k.jpg');
+  opacity: clamp(0, calc((var(--film-progress) - 0.52) * 1.5), 0.46);
+  transform: translate3d(calc((var(--film-progress) - 0.52) * -6vw), calc((var(--film-progress) - 0.52) * 5vh), 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .film-pulse {
+    animation: none;
+  }
 }
 
 .film-floor {
@@ -735,7 +823,7 @@ a:active {
   color: rgba(224, 170, 255, 0.7);
 }
 
-.hero-panel h1,
+.hero-panel h2,
 .copy-block h2,
 .transition-copy h2,
 .phase-one-panel h2,
@@ -752,12 +840,12 @@ a:active {
   text-wrap: balance;
 }
 
-.hero-panel h1 {
+.hero-panel h2 {
   font-size: clamp(4.8rem, 14vw, 14rem);
   letter-spacing: -0.035em;
 }
 
-.hero-panel h1 span,
+.hero-panel h2 span,
 .phase-one-panel h2 span,
 .memory-panel h2 span,
 .final-panel h2 span {
@@ -1370,4 +1458,138 @@ a:active {
   color: var(--ink-muted);
   font-size: clamp(1rem, 1.25vw, 1.2rem);
   line-height: 1.9;
+}
+
+/* ---- Intro gate -----------------------------------------------------------
+   Held on every refresh for --intro-duration, above everything including the
+   cart drawer (55) and the skip link (100).                                  */
+
+.intro-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--void, #050208);
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 900ms var(--ease-out-expo),
+    visibility 0s linear 0s;
+}
+
+.intro-gate.is-complete {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 900ms var(--ease-out-expo),
+    visibility 0s linear 900ms;
+}
+
+.intro-gate::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(58% 46% at 50% 44%, rgba(157, 114, 255, 0.16), transparent 66%);
+}
+
+.intro-gate-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  text-align: center;
+}
+
+.intro-gate-inner img {
+  width: clamp(96px, 12vw, 132px);
+  height: auto;
+  opacity: 0.94;
+}
+
+.intro-progress {
+  width: clamp(180px, 24vw, 280px);
+  height: 1px;
+  overflow: hidden;
+  background: rgba(247, 242, 255, 0.16);
+}
+
+.intro-progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(224, 170, 255, 0.5), rgba(247, 242, 255, 0.92));
+  transform-origin: left center;
+  animation: intro-fill var(--intro-duration, 6000ms) linear forwards;
+}
+
+@keyframes intro-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.intro-status {
+  margin: 0;
+  color: rgba(247, 242, 255, 0.44);
+  font-family: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-progress span {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
+
+/* ---- Mobile menu toggle ---------------------------------------------------
+   Hidden on desktop, where the links sit inline in the nav pill.            */
+
+.nav-menu-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 38px;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgba(247, 242, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(247, 242, 255, 0.04);
+  cursor: pointer;
+}
+
+.nav-menu-toggle span {
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: rgba(247, 242, 255, 0.82);
+  transition: transform 240ms var(--ease-out-expo), opacity 240ms var(--ease-out-expo);
+}
+
+.cinema-nav.is-menu-open .nav-menu-toggle span:first-child {
+  transform: translateY(3px) rotate(45deg);
+}
+
+.cinema-nav.is-menu-open .nav-menu-toggle span:last-child {
+  transform: translateY(-3px) rotate(-45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-menu-toggle span {
+    transition: none;
+  }
+}
+
+/* Clerk renders its own "Sign in to …" title; the page supplies the heading. */
+.clerk-auth-hidden-header {
+  display: none;
 }

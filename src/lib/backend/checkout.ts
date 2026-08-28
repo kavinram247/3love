@@ -5,7 +5,7 @@ import type Stripe from 'stripe'
 import { z } from 'zod'
 import { findVariant } from './catalog'
 import { collections, getMongoClient } from './db'
-import { backendEnv } from './env'
+import { backendEnv, requireSiteUrl } from './env'
 import { AppError } from './http'
 import { getStripe } from './stripe'
 import type { OrderDocument, ProductDocument, SafeUser } from './types'
@@ -128,6 +128,9 @@ async function ensureStripeCustomer(user: SafeUser) {
 }
 
 export async function createCheckoutSession(user: SafeUser, payload: CheckoutPayload) {
+  // Validated up front so a misconfigured deployment fails before it reserves
+  // stock, rather than after the customer has paid.
+  const siteUrl = requireSiteUrl()
   const db = await collections()
   const stripe = getStripe()
   const userId = user.id
@@ -276,8 +279,8 @@ export async function createCheckoutSession(user: SafeUser, payload: CheckoutPay
         description: `3love order ${orderId.toHexString()}`,
         metadata: { orderId: orderId.toHexString(), clerkUserId: user.id },
       },
-      success_url: `${backendEnv.siteUrl}/account/orders?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${backendEnv.siteUrl}/?checkout=cancelled#buy`,
+      success_url: `${siteUrl}/account/orders?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${siteUrl}/?checkout=cancelled#buy`,
     }, { idempotencyKey: `checkout/${orderId.toHexString()}` })
 
     const linked = await db.orders.updateOne(
