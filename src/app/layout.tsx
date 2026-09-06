@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     description: 'Perfume as memory. Love as energy. Emotion as a cosmic object.',
     type: 'website',
     siteName: '3love',
-    images: [{ url: '/assets/rotation/3love-rotation-cosmic-drift-4k-poster.jpg', width: 1920, height: 1080, alt: '3love Éclat fragrance' }],
+    images: [{ url: '/assets/rotation/3love-rotation-cosmic-drift-4k-poster.jpg', width: 1920, height: 1080, alt: '3love Phase I fragrance' }],
   },
   twitter: { card: 'summary_large_image' },
 }
