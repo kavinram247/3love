@@ -664,7 +664,7 @@ export default function CinematicScrollExperience({
         </div>
         <div className="brand-gateway-copy">
           <p className="micro-label">3V-L0V3 / SYSTEM ENGAGED</p>
-          <h1>A fragrance house for emotional memory.</h1>
+          <h1>3 versions of love orchestrating memory</h1>
           <p>
             Emotion becomes experience. Experience becomes memory.
           </p>
