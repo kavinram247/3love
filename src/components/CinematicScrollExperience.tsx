@@ -34,53 +34,15 @@ type CheckoutState = {
   error: string
 }
 
-type SystemScene = {
-  id: string
-  eyebrow: string
-  index: string
-  mood: 'system' | 'emotion' | 'experience' | 'memory'
-  title: string
-  body: string
-  fragments: string[]
-}
-
-const systemScenes: SystemScene[] = [
-  {
-    id: 'system',
-    eyebrow: 'PHASE_00 / THE SYSTEM',
-    index: '00',
-    mood: 'system',
-    title: 'A system for emotional evolution.',
-    body: 'Before fragrance, there is a framework: emotion, experience, memory. The site is the first proof of the philosophy.',
-    fragments: ['Evolution', 'Innovation', 'Emotional engineering'],
-  },
-  {
-    id: 'emotion',
-    eyebrow: '01 / EMOTION',
-    index: '01',
-    mood: 'emotion',
-    title: 'The bottle appears.',
-    body: 'Untouched. Pure. A subtle pulse begins.',
-    fragments: ['Instinct', 'Tension', 'Curiosity'],
-  },
-  {
-    id: 'experience',
-    eyebrow: '02 / EXPERIENCE',
-    index: '02',
-    mood: 'experience',
-    title: 'The system awakens.',
-    body: '3V reveals itself. Particles begin to separate.',
-    fragments: ['Texture', 'Diffusion', 'Sequence'],
-  },
-  {
-    id: 'memory',
-    eyebrow: '03 / MEMORY',
-    index: '03',
-    mood: 'memory',
-    title: 'The bottle moves on.',
-    body: 'Its memory remains. The impression stays.',
-    fragments: ['Reflection', 'Archive', 'Afterimage'],
-  },
+/** Blank scroll panels between the entry and Phase 01. Three carry the ids the
+ *  navigation links to, so those anchors still land in the right place. */
+const filmSpacers: Array<string | null> = [
+  'system',
+  'emotion',
+  'experience',
+  'memory',
+  null,
+  null,
 ]
 
 const philosophyInteractions = [
@@ -859,39 +821,17 @@ export default function CinematicScrollExperience({
             </a>
           </article>
 
-          {systemScenes.map((scene) => (
-            <article
-              key={scene.id}
-              id={scene.id}
-              className={`story-panel system-scene scene-${scene.mood}`}
-              data-reveal
-            >
-              <div className="copy-block">
-                <p className="micro-label">{scene.eyebrow}</p>
-                <h2>{scene.title}</h2>
-                <p>{scene.body}</p>
-              </div>
-              <div className="scene-field" aria-hidden="true">
-                <i />
-              </div>
-            </article>
+          {/* The film runs uninterrupted through here: empty viewport-heights so the
+              bottle rotates on its own as you scroll. The ids are kept so the nav
+              anchors and the hero's "Begin the system" link still land. */}
+          {filmSpacers.map((id, index) => (
+            <div
+              key={id ?? `film-spacer-${index}`}
+              id={id ?? undefined}
+              className="story-spacer"
+              aria-hidden="true"
+            />
           ))}
-
-          <article className="story-panel transition-panel sync-panel" data-reveal>
-            <div className="transition-copy">
-              <p className="micro-label">TRANSITION / ALIGNMENT</p>
-              <h2>The signal begins to align.</h2>
-              <p>Particles slow. Reflections sharpen. The system stops feeling abstract and starts becoming structure.</p>
-            </div>
-          </article>
-
-          <article className="story-panel transition-panel fade-panel" data-reveal>
-            <div className="transition-copy">
-              <p className="micro-label">MEMORY / COLLAPSE</p>
-              <h2>What disappears becomes the imprint.</h2>
-              <p>The dream thins out. The abstract field condenses into a physical signal.</p>
-            </div>
-          </article>
 
           <article id="phase-01" className="story-panel phase-one-panel" data-reveal>
             <p className="micro-label">MEMORY → PRODUCT</p>

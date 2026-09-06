@@ -1593,3 +1593,12 @@ a:active {
 .clerk-auth-hidden-header {
   display: none;
 }
+
+/* Blank stretch of the film. No content and no reveal animation — just scroll
+   length, so the bottle rotates uninterrupted behind it. Matches the height the
+   four scenes and two transition panels used to occupy. */
+.story-spacer {
+  min-height: 100svh;
+  pointer-events: none;
+  scroll-margin-top: 96px;
+}
