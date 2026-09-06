@@ -2421,3 +2421,35 @@
   line-height: 1.5;
   text-transform: none;
 }
+
+/* Payment references on an admin order row. Selectable so they can be pasted
+   straight into Stripe's search. */
+.order-ref {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0;
+  background: none;
+  color: rgba(247, 242, 255, 0.72);
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+
+.order-ref b {
+  flex: none;
+  min-width: 58px;
+  color: rgba(224, 170, 255, 0.7);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.order-ref.is-muted {
+  color: rgba(247, 242, 255, 0.38);
+}

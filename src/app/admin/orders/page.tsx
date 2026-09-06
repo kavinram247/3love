@@ -57,9 +57,25 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                 <span>{formatDate(order.createdAt)}</span>
                 <strong>{order.email}</strong>
                 <em>{order.items.map((item) => `${item.quantity} x ${item.productName}`).join(', ')}</em>
+                {/* Sent to Stripe as client_reference_id and as orderId in both
+                    the session and payment-intent metadata, so it finds the
+                    payment from either side. */}
+                <code className="order-ref">
+                  <b>REF</b>{order._id.toHexString()}
+                </code>
               </div>
               <div>
                 <strong>{formatGbp(order.totalGbpPence)}</strong>
+                {order.stripePaymentIntent ? (
+                  <code className="order-ref"><b>PAYMENT</b>{order.stripePaymentIntent}</code>
+                ) : order.stripeSessionId ? (
+                  <code className="order-ref"><b>SESSION</b>{order.stripeSessionId}</code>
+                ) : (
+                  <code className="order-ref is-muted"><b>PAYMENT</b>not started</code>
+                )}
+                {order.stripeRefundId && (
+                  <code className="order-ref"><b>REFUND</b>{order.stripeRefundId}</code>
+                )}
                 <em>{order.shippingPostcode || 'Shipping from Stripe pending'}</em>
               </div>
               <form action={updateOrderStatus} className="commerce-inline-form">
