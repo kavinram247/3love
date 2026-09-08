@@ -14,6 +14,7 @@ type EnvironmentPanelProps = {
 export default function EnvironmentPanel({ products, onAddToCart }: EnvironmentPanelProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const addButtonRef = useRef<HTMLButtonElement | null>(null)
+  const activeCardRef = useRef<HTMLElement | null>(null)
 
   const hasActive = products.some((product) => product.id === activeId)
 
@@ -29,10 +30,29 @@ export default function EnvironmentPanel({ products, onAddToCart }: EnvironmentP
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [hasActive])
 
-  // Entering an environment moves focus to the action it reveals.
+  // Entering an environment moves focus to the action it reveals — but without
+  // the browser's default focus scroll. The add-to-cart button sits below the
+  // fold on an open card, so focusing it normally yanked the page down past the
+  // product name. Switching between environments re-ran this and jumped again.
   useEffect(() => {
     if (!hasActive) return
-    const frame = requestAnimationFrame(() => addButtonRef.current?.focus())
+
+    const frame = requestAnimationFrame(() => {
+      addButtonRef.current?.focus({ preventScroll: true })
+
+      // Only bring the card into view when it is not meaningfully on screen,
+      // so entering an environment never moves the page unnecessarily.
+      const card = activeCardRef.current
+      if (!card) return
+
+      const rect = card.getBoundingClientRect()
+      const visible = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)
+      if (visible >= Math.min(240, rect.height)) return
+
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      card.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' })
+    })
+
     return () => cancelAnimationFrame(frame)
   }, [hasActive, activeId])
 
@@ -58,6 +78,7 @@ export default function EnvironmentPanel({ products, onAddToCart }: EnvironmentP
           return (
             <section
               key={product.id}
+              ref={isActive ? activeCardRef : null}
               className={`environment-card ${isActive ? 'is-active' : ''} ${isDimmed ? 'is-dimmed' : ''}`}
               data-env={product.slug}
               aria-label={product.name}
