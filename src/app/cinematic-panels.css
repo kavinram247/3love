@@ -1119,11 +1119,29 @@
     min-height: 100svh;
   }
 
+  /* Flex rather than grid: the logo, cart and menu button are three items and
+     a two-column grid pushed the cart onto a second row. */
   .cinema-nav {
-    grid-template-columns: auto auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     width: calc(100vw - 24px);
     min-height: 54px;
     padding: 8px 10px 8px 14px;
+  }
+
+  .cinema-nav .brand-lockup {
+    margin-right: auto;
+  }
+
+  .cinema-nav .nav-actions {
+    order: 2;
+    gap: 6px;
+  }
+
+  .cinema-nav .nav-menu-toggle {
+    order: 3;
+    flex: none;
   }
 
   /* The links become a panel under the pill instead of disappearing, so Buy
@@ -1205,9 +1223,11 @@
     right: clamp(18px, 6vw, 34px);
   }
 
+  /* line-height must clear the glyphs: at 18vw the old 0.9 made the line box
+     shorter than the type, so ascenders and descenders collided. */
   .brand-gateway h1 {
-    font-size: clamp(4rem, 18vw, 8.4rem);
-    line-height: 0.9;
+    font-size: clamp(2.9rem, 13.5vw, 5.6rem);
+    line-height: 1.02;
   }
 
   .brand-gateway-copy > p:not(.micro-label) {
@@ -1598,7 +1618,7 @@
   }
 
   .brand-gateway h1 {
-    font-size: clamp(3.7rem, 18vw, 6.2rem);
+    font-size: clamp(2.5rem, 12.5vw, 4.4rem);
   }
 
   .brand-gateway-copy > p:not(.micro-label) {

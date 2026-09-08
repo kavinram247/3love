@@ -749,12 +749,9 @@ export default function CinematicScrollExperience({
             <span />
           </button>
           <div id="primary-nav-links" className="nav-links" onClick={() => setIsMenuOpen(false)}>
-            <a href="#brand">Brand</a>
             <a href="#system">System</a>
-            <a href="#experience">Experience</a>
-            <a href="#memory">Memory</a>
             <a href="#phase-01">Phase 01</a>
-            <a href="#buy" className="nav-buy-link">Buy</a>
+            <a href="#experience">Experience</a>
             <ClerkLoading><Link href="/login">Sign in</Link></ClerkLoading>
             <ClerkLoaded>
               <Show when="signed-in" fallback={<Link href="/login">Sign in</Link>}>
@@ -797,10 +794,6 @@ export default function CinematicScrollExperience({
                   </>
                 )}
               </div>
-            </div>
-            <div className="time-hud">
-              <span>Scroll controls time</span>
-              <i />
             </div>
           </div>
         </nav>
