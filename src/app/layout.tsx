@@ -36,9 +36,9 @@ export const metadata: Metadata = {
   },
   description: '3 Versions of Love. A cinematic perfume system where scroll controls time, memory, and aroma.',
   icons: {
-    icon: '/logo.jpg',
-    shortcut: '/logo.jpg',
-    apple: '/logo.jpg',
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
   },
   openGraph: {
     title: '3love — Memory Constants',

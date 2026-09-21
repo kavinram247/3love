@@ -30,3 +30,6 @@ pnpm-debug.log*
 
 # local analysis/cache output
 graphify-out/
+
+# clerk configuration (can include secrets)
+/.clerk/

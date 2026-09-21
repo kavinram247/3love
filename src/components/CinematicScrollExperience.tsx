@@ -15,10 +15,16 @@ const SCRUB_VIDEO_MOBILE_SRC = '/assets/rotation/3love-rotation-scrub-720p-v1.mp
 const POSTER_SRC = '/assets/rotation/3love-rotation-cosmic-drift-4k-poster.jpg'
 const CART_STORAGE_KEY = '3love-cart-v1'
 /** Every refresh holds on the intro before the site is revealed. */
-const INTRO_DURATION_MS = 6000
+const INTRO_DURATION_MS = 2000
 const SCRUB_FRAME_RATE = 24
 const SCRUB_FRAME_INTERVAL_MS = 1000 / SCRUB_FRAME_RATE
 const SCRUB_FRAME_EPSILON = 1 / (SCRUB_FRAME_RATE * 2)
+/** The bottle video scrubs through its footage 3x faster than the rest of the
+ *  scroll-driven parallax, so it finishes its rotation before the section does. */
+const VIDEO_SCROLL_SPEED = 3
+/** The floating nav only hides once scrolled past the very top, so it doesn't
+ *  flicker away on the first pixel of scroll. */
+const NAV_HIDE_SCROLL_THRESHOLD = 80
 
 type CartItem = {
   productId: string
@@ -33,35 +39,6 @@ type CheckoutState = {
   isLoading: boolean
   error: string
 }
-
-/** Blank scroll panels between the entry and Phase 01. Three carry the ids the
- *  navigation links to, so those anchors still land in the right place. */
-const filmSpacers: Array<string | null> = [
-  'system',
-  'emotion',
-  'experience',
-  'memory',
-  null,
-  null,
-]
-
-const philosophyInteractions = [
-  {
-    code: '01',
-    label: 'Emotion',
-    copy: 'The immediate trigger. Fast, instinctive, impossible to explain before it happens.',
-  },
-  {
-    code: '02',
-    label: 'Experience',
-    copy: 'The orchestrated middle. Notes, texture, movement, and atmosphere begin to synchronise.',
-  },
-  {
-    code: '03',
-    label: 'Memory',
-    copy: 'The lasting imprint. What stays after the movement has disappeared.',
-  },
-]
 
 const noteStack = [
   { tier: 'Top', label: 'Trigger', copy: 'The first version: volatile, immediate, and emotionally charged.', examples: 'Bergamot, Citrus, Ozone' },
@@ -111,6 +88,8 @@ export default function CinematicScrollExperience({
   const featuredProduct = activeProducts[0] ?? fallbackProducts[0]
   const productLookup = useMemo(() => new Map(activeProducts.map((product) => [product.id, product])), [activeProducts])
   const sectionRef = useRef<HTMLElement | null>(null)
+  const navRef = useRef<HTMLElement | null>(null)
+  const phaseOneRef = useRef<HTMLElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const rafRef = useRef<number | null>(null)
   const checkoutKeyRef = useRef<string | null>(null)
@@ -220,11 +199,20 @@ export default function CinematicScrollExperience({
     }
   }
 
+  // Centers the environment cards themselves rather than the top of the whole
+  // section, so the heading above them doesn't push the cards below the fold.
+  const scrollToCompositions = () => {
+    document.getElementById('buy')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  const handleCompositionsLinkClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    scrollToCompositions()
+  }
+
   const returnToCompositions = () => {
     setIsCartOpen(false)
-    window.setTimeout(() => {
-      document.getElementById('compositions')?.scrollIntoView({ block: 'start', inline: 'nearest' })
-    }, 120)
+    window.setTimeout(scrollToCompositions, 120)
   }
 
   // The intro gate holds for a fixed beat on every load, and locks the page
@@ -379,6 +367,8 @@ export default function CinematicScrollExperience({
   useEffect(() => {
     const section = sectionRef.current
     const video = videoRef.current
+    const nav = navRef.current
+    const phaseOnePanel = phaseOneRef.current
     if (!section || !video) return
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -386,6 +376,7 @@ export default function CinematicScrollExperience({
     const state = {
       current: 0,
       target: 0,
+      videoTarget: 0,
       duration: 0,
       velocity: 0,
       lastY: window.scrollY,
@@ -408,6 +399,20 @@ export default function CinematicScrollExperience({
       const range = Math.max(rect.height - viewportHeight, 1)
       state.target = clamp(-rect.top / range, 0, 1)
       section.style.setProperty('--film-target', state.target.toFixed(4))
+
+      // The video stays on its first frame until Phase 01 is nearly in view,
+      // then scrubs across the remaining scroll distance to the end of the
+      // section. Starting a beat before its top edge hits the viewport top
+      // means the rotation is already underway by the time the heading — which
+      // sits close to that edge — actually becomes visible.
+      if (phaseOnePanel) {
+        const phaseRect = phaseOnePanel.getBoundingClientRect()
+        const startOffset = viewportHeight * 0.3
+        const videoRange = Math.max((rect.bottom - phaseRect.top) - viewportHeight + startOffset, 1)
+        state.videoTarget = clamp((startOffset - phaseRect.top) / videoRange, 0, 1)
+      } else {
+        state.videoTarget = state.target
+      }
     }
 
     const seekTo = (nextTime: number, now: number, force = false) => {
@@ -437,7 +442,8 @@ export default function CinematicScrollExperience({
 
       const duration = readDuration()
       if (state.ready && Number.isFinite(duration) && duration > 0) {
-        seekTo(videoTimeForProgress(state.current, duration), now, forceVideo)
+        const videoProgress = clamp(state.videoTarget * VIDEO_SCROLL_SPEED, 0, 1)
+        seekTo(videoTimeForProgress(videoProgress, duration), now, forceVideo)
       }
     }
 
@@ -498,10 +504,17 @@ export default function CinematicScrollExperience({
       const y = window.scrollY
       const dt = Math.max(now - state.lastTime, 16)
       state.velocity = ((y - state.lastY) / dt) * 1000
+      const scrolledDown = y > state.lastY
       state.lastY = y
       state.lastTime = now
       state.lastInput = now
       measureProgress()
+
+      // The mobile menu lives inside this same nav, so never hide it out from
+      // under an open menu.
+      if (nav && !nav.classList.contains('is-menu-open')) {
+        nav.classList.toggle('is-hidden', scrolledDown && y > NAV_HIDE_SCROLL_THRESHOLD)
+      }
 
       if (reduceMotion.matches) {
         state.current = state.target
@@ -649,7 +662,7 @@ export default function CinematicScrollExperience({
         aria-live="polite"
       >
         <div className="intro-gate-inner">
-          <Image src="/logo.jpg" alt="" width={132} height={54} priority />
+          <Image src="/logo.png" alt="" width={81} height={54} priority />
           <p className="micro-label">3V-L0V3 / SYSTEM ENGAGED</p>
           <div className="intro-progress" aria-hidden="true"><span /></div>
           <p className="intro-status">Initializing memory system</p>
@@ -664,7 +677,14 @@ export default function CinematicScrollExperience({
         </div>
         <div className="brand-gateway-copy">
           <p className="micro-label">3V-L0V3 / SYSTEM ENGAGED</p>
-          <h1>3 versions of love orchestrating memory</h1>
+          <h1 className="brand-title">
+            3 Versions
+            <em>of love</em>
+            <span className="brand-title-system">
+              <span>Orchestrating</span>
+              <span className="brand-title-accent">Memory.</span>
+            </span>
+          </h1>
           <p>
             Emotion becomes experience. Experience becomes memory.
           </p>
@@ -728,14 +748,14 @@ export default function CinematicScrollExperience({
 
         <div className={`cinema-loader ${isReady ? 'is-loaded' : ''}`} aria-hidden="true">
           <div className="loader-mark">
-            <Image src="/logo.jpg" alt="" width={112} height={46} priority />
+            <Image src="/logo.png" alt="" width={69} height={46} priority />
           </div>
           <p>Initializing memory system</p>
         </div>
 
-        <nav className={`cinema-nav ${isMenuOpen ? 'is-menu-open' : ''}`} aria-label="Primary navigation">
+        <nav ref={navRef} className={`cinema-nav ${isMenuOpen ? 'is-menu-open' : ''}`} aria-label="Primary navigation">
           <a href="#brand" className="brand-lockup" aria-label="3love home">
-            <Image src="/logo.jpg" alt="3love" width={92} height={38} priority />
+            <Image src="/logo.png" alt="3love" width={57} height={38} priority />
           </a>
           <button
             className="nav-menu-toggle"
@@ -749,9 +769,8 @@ export default function CinematicScrollExperience({
             <span />
           </button>
           <div id="primary-nav-links" className="nav-links" onClick={() => setIsMenuOpen(false)}>
-            <a href="#system">System</a>
             <a href="#phase-01">Phase 01</a>
-            <a href="#experience">Experience</a>
+            <a href="#artifact-theater">Experience</a>
             <ClerkLoading><Link href="/login">Sign in</Link></ClerkLoading>
             <ClerkLoaded>
               <Show when="signed-in" fallback={<Link href="/login">Sign in</Link>}>
@@ -760,6 +779,20 @@ export default function CinematicScrollExperience({
             </ClerkLoaded>
           </div>
           <div className="nav-actions">
+            <div className="nav-social" aria-label="Follow 3love">
+              <a href="https://www.instagram.com/3v_l0v3/" target="_blank" rel="noopener noreferrer" aria-label="3love on Instagram">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="5" />
+                  <circle cx="12" cy="12" r="4.2" />
+                  <circle cx="17.4" cy="6.6" r="1" fill="currentColor" stroke="none" />
+                </svg>
+              </a>
+              <a href="https://www.tiktok.com/@3versionsoflove" target="_blank" rel="noopener noreferrer" aria-label="3love on TikTok">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M16.5 3c.3 2.1 1.6 3.6 3.7 3.9v3.1c-1.3.1-2.5-.3-3.7-1.1v6.4c0 3.4-2.7 5.9-6 5.9-3.4 0-6-2.5-6-5.9 0-3.3 2.6-5.8 6-5.8.3 0 .6 0 .9.1v3.2c-.3-.1-.6-.2-.9-.2-1.5 0-2.7 1.2-2.7 2.7 0 1.5 1.2 2.7 2.7 2.7 1.5 0 2.8-1.1 2.8-2.7V3h3.2Z" />
+                </svg>
+              </a>
+            </div>
             <div className="cart-trigger">
               <button
                 className="cart-pill"
@@ -799,54 +832,6 @@ export default function CinematicScrollExperience({
         </nav>
 
         <div className="story-rail">
-          <article className="story-panel hero-panel entry-panel" data-reveal>
-            <p className="micro-label">3V-L0V3 / ENTRY</p>
-            <h2>
-              3 Versions
-              <span>of Love</span>
-            </h2>
-            <p className="hero-copy">
-              A system that engineers emotional memory through evolving experiences.
-            </p>
-            <a className="cinema-button" href="#system">
-              <span>Begin the system</span>
-              <i>↓</i>
-            </a>
-          </article>
-
-          {/* The film runs uninterrupted through here: empty viewport-heights so the
-              bottle rotates on its own as you scroll. The ids are kept so the nav
-              anchors and the hero's "Begin the system" link still land. */}
-          {filmSpacers.map((id, index) => (
-            <div
-              key={id ?? `film-spacer-${index}`}
-              id={id ?? undefined}
-              className="story-spacer"
-              aria-hidden="true"
-            />
-          ))}
-
-          <article id="phase-01" className="story-panel phase-one-panel" data-reveal>
-            <p className="micro-label">MEMORY → PRODUCT</p>
-            <h2>
-              <span>PHASE_01</span>
-              THE DANCE OF DIFFUSION
-            </h2>
-            <p>
-              The system becomes tangible: a fragrance built to move through emotion,
-              experience, and memory before it ever becomes a product.
-            </p>
-            <div className="phase-one-codes" aria-label="Phase 01 interaction sequence">
-              {philosophyInteractions.map((item) => (
-                <div key={item.code}>
-                  <span>{item.code}</span>
-                  <strong>{item.label}</strong>
-                  <small>{item.copy}</small>
-                </div>
-              ))}
-            </div>
-          </article>
-
           <article
             id="artifact-theater"
             className="story-panel artifact-theater-panel"
@@ -855,11 +840,6 @@ export default function CinematicScrollExperience({
           >
             <div className="artifact-theater-heading">
               <p className="micro-label">PHASE_01 / CLOSER LOOK</p>
-              <h2>The first artifact.</h2>
-              <p>
-                Three compositions share one vessel. The image stays physical,
-                clear, and cinematic.
-              </p>
             </div>
 
             <div className="artifact-screen" aria-label={`${featuredProduct.name} artifact preview`}>
@@ -882,7 +862,7 @@ export default function CinematicScrollExperience({
                 <div className="artifact-note-row">
                   {activeProducts.map((product) => <em key={product.id}>{product.name}</em>)}
                 </div>
-                <a className="cinema-button artifact-add-button" href="#compositions">
+                <a className="cinema-button artifact-add-button" href="#compositions" onClick={handleCompositionsLinkClick}>
                   <span>Choose your environment</span>
                   <i>↗</i>
                 </a>
@@ -894,9 +874,23 @@ export default function CinematicScrollExperience({
                 <span>{featuredProduct.volume}</span>
                 <strong>{featuredProduct.stockLabel}</strong>
               </div>
-              <a className="quiet-link" href="#compositions">Enter compositions</a>
+              <a className="quiet-link" href="#compositions" onClick={handleCompositionsLinkClick}>Enter compositions</a>
             </div>
           </article>
+
+          <article ref={phaseOneRef} id="phase-01" className="story-panel phase-one-panel" data-reveal>
+            <p className="micro-label">PHASE_01 / MEMORY → PRODUCT</p>
+            <h2>
+              The Dance of
+              <span>Diffusion</span>
+            </h2>
+            <p>
+              The system becomes tangible: a fragrance built to move through emotion,
+              experience, and memory before it ever becomes a product.
+            </p>
+          </article>
+
+          <EnvironmentPanel products={activeProducts} onAddToCart={addProductToCart} />
 
           <article className="story-panel orchestration-panel philosophy-panel" data-reveal>
             <div className="copy-block">
@@ -920,30 +914,26 @@ export default function CinematicScrollExperience({
             </div>
           </article>
 
-          <EnvironmentPanel products={activeProducts} onAddToCart={addProductToCart} />
-
-          <article id="enter" className="story-panel final-panel" data-reveal>
-            <p className="micro-label">FINAL / ENTER PHASE_01</p>
-            <h2>
-              Now enter
-              <span>the artifact.</span>
-            </h2>
-            <p>The system has become scent.</p>
-            <div className="final-actions">
-              <button className="cinema-button" type="button" onClick={() => setIsCartOpen(true)}>
-                <span>Open cart</span>
-                <i>↗</i>
-              </button>
-              <a className="quiet-link" href="#compositions">Explore compositions</a>
-            </div>
-            <footer>
-              <span>3 Versions of Love</span>
-              <span>Memory Constants</span>
-              <span>© 2026</span>
-            </footer>
-          </article>
         </div>
       </section>
+
+      <footer className="site-footer">
+        <span className="site-footer-brand">3 Versions of Love</span>
+        <div className="site-footer-social" aria-label="Follow 3love">
+          <a href="https://www.instagram.com/3v_l0v3/" target="_blank" rel="noopener noreferrer" aria-label="3love on Instagram">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="5" />
+              <circle cx="12" cy="12" r="4.2" />
+              <circle cx="17.4" cy="6.6" r="1" fill="currentColor" stroke="none" />
+            </svg>
+          </a>
+          <a href="https://www.tiktok.com/@3versionsoflove" target="_blank" rel="noopener noreferrer" aria-label="3love on TikTok">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M16.5 3c.3 2.1 1.6 3.6 3.7 3.9v3.1c-1.3.1-2.5-.3-3.7-1.1v6.4c0 3.4-2.7 5.9-6 5.9-3.4 0-6-2.5-6-5.9 0-3.3 2.6-5.8 6-5.8.3 0 .6 0 .9.1v3.2c-.3-.1-.6-.2-.9-.2-1.5 0-2.7 1.2-2.7 2.7 0 1.5 1.2 2.7 2.7 2.7 1.5 0 2.8-1.1 2.8-2.7V3h3.2Z" />
+            </svg>
+          </a>
+        </div>
+      </footer>
 
       <div
         className={`cart-backdrop ${isCartOpen ? 'is-open' : ''}`}

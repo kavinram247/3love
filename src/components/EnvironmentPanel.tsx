@@ -83,6 +83,7 @@ export default function EnvironmentPanel({ products, onAddToCart }: EnvironmentP
               data-env={product.slug}
               aria-label={product.name}
               style={{ '--accent-rgb': product.accent } as CSSProperties}
+              onClick={!isActive ? () => setActiveId(product.id) : undefined}
             >
               {/* The photograph layers over a per-environment gradient, so the
                   panel still reads correctly before the art is in place. */}

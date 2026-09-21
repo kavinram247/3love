@@ -6,24 +6,6 @@
   gap: clamp(32px, 6vw, 94px);
 }
 
-.entry-panel {
-  isolation: isolate;
-  overflow: hidden;
-}
-
-.entry-panel::before {
-  content: '';
-  position: absolute;
-  inset: 8vh clamp(18px, 5vw, 76px);
-  z-index: -1;
-  opacity: calc(0.18 + var(--film-progress) * 0.16);
-  background:
-    radial-gradient(80% 65% at 18% 28%, rgba(157, 114, 255, 0.24), transparent 64%),
-    radial-gradient(68% 52% at 76% 66%, rgba(224, 72, 126, 0.14), transparent 66%);
-  transform: translate3d(calc((var(--film-progress) - 0.5) * -4vw), 0, 0);
-  will-change: transform, opacity;
-}
-
 .entry-field {
   position: absolute;
   inset: 0;
@@ -233,10 +215,7 @@
 .phase-one-panel {
   isolation: isolate;
   align-content: center;
-  justify-items: center;
   overflow: hidden;
-  min-height: 120svh;
-  text-align: center;
 }
 
 .phase-one-panel::before,
@@ -277,57 +256,8 @@
   letter-spacing: -0.045em;
 }
 
-.phase-one-panel h2 span {
-  margin-bottom: clamp(16px, 2.2vw, 28px);
-  color: rgba(247, 242, 255, 0.72);
-  font-family: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(0.78rem, 1vw, 1rem);
-  font-weight: 700;
-  letter-spacing: 0.42em;
-  line-height: 1.5;
-}
-
 .phase-one-panel > p {
   max-width: 720px;
-}
-
-.phase-one-codes {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  width: min(980px, 100%);
-  gap: clamp(18px, 4vw, 62px);
-  margin-top: clamp(52px, 7vw, 96px);
-  text-align: left;
-}
-
-.phase-one-codes div {
-  position: relative;
-  padding-top: 20px;
-  border-top: 1px solid rgba(247, 242, 255, 0.16);
-}
-
-.phase-one-codes span {
-  display: block;
-  color: rgba(224, 170, 255, 0.62);
-  font-size: 0.68rem;
-}
-
-.phase-one-codes strong {
-  display: block;
-  margin-top: 15px;
-  color: var(--ink);
-  font-size: clamp(0.95rem, 1.3vw, 1.18rem);
-  letter-spacing: 0.16em;
-}
-
-.phase-one-codes small {
-  display: block;
-  margin-top: 12px;
-  color: rgba(247, 242, 255, 0.54);
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  line-height: 1.75;
-  text-transform: none;
 }
 
 .philosophy-panel {
@@ -340,7 +270,6 @@
   align-content: center;
   justify-items: center;
   gap: clamp(30px, 4.5vw, 64px);
-  min-height: 132svh;
   overflow: hidden;
 }
 
@@ -355,16 +284,6 @@
 .artifact-theater-heading .micro-label {
   grid-column: 1 / -1;
   margin-bottom: -4px;
-}
-
-.artifact-theater-heading h2 {
-  max-width: 820px;
-  font-size: clamp(3.8rem, 9vw, 9.6rem);
-}
-
-.artifact-theater-heading p:not(.micro-label) {
-  max-width: 420px;
-  margin: 0;
 }
 
 .artifact-screen {
@@ -1071,47 +990,9 @@
   color: rgba(247, 242, 255, 0.68);
 }
 
-.final-panel {
-  align-content: center;
-  justify-items: start;
-}
-
-.final-panel h2 {
-  max-width: 1050px;
-}
-
-.final-panel p:not(.micro-label) {
-  color: var(--ink);
-  font-family: var(--font-cormorant), Georgia, serif;
-  font-size: clamp(2.8rem, 8vw, 7.4rem);
-  line-height: 0.92;
-}
-
-.final-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 24px;
-  margin-top: 18px;
-}
-
 .quiet-link {
   color: rgba(247, 242, 255, 0.42);
   font-size: 10px;
-}
-
-.final-panel footer {
-  position: absolute;
-  left: clamp(20px, 7vw, 110px);
-  right: clamp(20px, 7vw, 110px);
-  bottom: 34px;
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  border-top: 1px solid rgba(247, 242, 255, 0.1);
-  padding-top: 18px;
-  color: rgba(247, 242, 255, 0.3);
-  font-size: 9px;
 }
 
 @media (max-width: 900px) {
@@ -1230,6 +1111,10 @@
     line-height: 1.02;
   }
 
+  .brand-title-system {
+    font-size: clamp(1.05rem, 6vw, 1.6rem);
+  }
+
   .brand-gateway-copy > p:not(.micro-label) {
     max-width: min(82vw, 560px);
   }
@@ -1284,7 +1169,7 @@
     grid-template-columns: 1fr;
     gap: 34px;
     min-height: auto;
-    padding: 150px clamp(18px, 6vw, 34px);
+    padding: 56px clamp(18px, 6vw, 34px);
   }
 
   .story-panel {
@@ -1301,21 +1186,14 @@
     font-size: clamp(4.5rem, 28vw, 9rem);
   }
 
-  .hero-panel h2 {
-    font-size: clamp(4.2rem, 21vw, 8rem);
-  }
-
-  .hero-copy {
-    max-width: min(78vw, 420px);
-  }
-
-  .copy-block h2,
   .transition-copy h2,
   .phase-one-panel h2,
-  .artifact-theater-heading h2,
-  .product-heading h2,
-  .final-panel h2 {
+  .product-heading h2 {
     font-size: clamp(3.2rem, 16vw, 6.6rem);
+  }
+
+  .copy-block h2 {
+    font-size: clamp(1.2rem, 16vw, 4.6rem);
   }
 
   .system-scene {
@@ -1341,7 +1219,7 @@
   }
 
   .phase-one-panel {
-    min-height: 108svh;
+    min-height: 100svh;
     text-align: left;
     justify-items: start;
   }
@@ -1365,17 +1243,6 @@
     font-size: clamp(3.4rem, 14vw, 6.3rem);
   }
 
-  .phase-one-panel h2 span {
-    font-size: 0.68rem;
-    letter-spacing: 0.32em;
-  }
-
-  .phase-one-codes {
-    grid-template-columns: 1fr;
-    gap: 24px;
-    margin-top: 48px;
-  }
-
   .artifact-theater-heading {
     grid-template-columns: 1fr;
     gap: 22px;
@@ -1388,24 +1255,6 @@
 
   .artifact-theater-heading .micro-label {
     margin-bottom: 0;
-  }
-
-  .artifact-theater-heading h2 {
-    width: 100%;
-    inline-size: calc(100vw - 36px);
-    max-inline-size: calc(100vw - 36px);
-    max-width: 100%;
-    font-size: clamp(3.1rem, 14vw, 5rem);
-    line-height: 0.9;
-    text-wrap: balance;
-  }
-
-  .artifact-theater-heading p:not(.micro-label) {
-    width: 100%;
-    margin-top: 0;
-    max-width: min(100%, 330px);
-    font-size: 1rem;
-    line-height: 1.72;
   }
 
   .artifact-screen {
@@ -1502,12 +1351,6 @@
   .film-frames figure:nth-child(2) {
     width: 92%;
     margin-top: -4%;
-  }
-
-  .final-panel footer {
-    position: static;
-    flex-direction: column;
-    margin-top: 80px;
   }
 }
 
@@ -2157,6 +2000,7 @@
   flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
+  contain: layout paint;
   border: 1px solid rgba(247, 242, 255, 0.12);
   border-radius: 26px;
   box-shadow:
@@ -2167,8 +2011,13 @@
   background-position: center;
   transition:
     flex-grow 760ms var(--ease-out-expo),
+    height 760ms var(--ease-out-expo),
     opacity 520ms var(--ease-out-expo),
     border-color 520ms var(--ease-out-expo);
+}
+
+.environment-card:not(.is-active) {
+  cursor: pointer;
 }
 
 .environment-card.is-active {
@@ -2221,6 +2070,14 @@
   z-index: 2;
   background:
     linear-gradient(180deg, rgba(5, 2, 8, 0.32) 0%, rgba(5, 2, 8, 0.06) 34%, rgba(5, 2, 8, 0.88) 100%);
+}
+
+/* The full composition text scrolls over the fixed photograph behind it, so
+   the light middle band of the collapsed veil isn't enough here — darken it
+   uniformly instead of relying on a gradient tuned for the collapsed title. */
+.environment-card.is-active .environment-veil {
+  background:
+    linear-gradient(180deg, rgba(5, 2, 8, 0.58) 0%, rgba(5, 2, 8, 0.52) 40%, rgba(5, 2, 8, 0.92) 100%);
 }
 
 .environment-body {
@@ -2281,6 +2138,10 @@
   background: rgba(10, 5, 16, 0.72);
 }
 
+/* The card's flex-grow takes 760ms to settle, and rendering this content
+   immediately makes its text rewrap on every frame of that resize — the
+   delayed fade-in keeps it invisible (though still laid out) until the card
+   is nearly done growing, so nothing visibly jumps. */
 .environment-detail {
   display: flex;
   flex-direction: column;
@@ -2288,6 +2149,20 @@
   gap: 14px;
   width: 100%;
   margin-top: 4px;
+  opacity: 0;
+  animation: environment-detail-in 420ms var(--ease-out-expo) 340ms forwards;
+}
+
+@keyframes environment-detail-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 .environment-notes {
@@ -2341,6 +2216,12 @@
   .environment-art {
     transition: none;
   }
+
+  .environment-detail {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @media (max-width: 900px) {
@@ -2351,11 +2232,11 @@
 
   .environment-card {
     flex: none;
-    min-height: clamp(300px, 46vh, 400px);
+    height: clamp(300px, 46vh, 400px);
   }
 
   .environment-card.is-active {
-    min-height: clamp(430px, 62vh, 560px);
+    height: clamp(430px, 62vh, 560px);
   }
 
   .environment-card.is-dimmed {
@@ -2400,7 +2281,7 @@
 .environment-copy p {
   margin: 0;
   max-width: 52ch;
-  color: rgba(247, 242, 255, 0.74);
+  color: rgba(247, 242, 255, 0.9);
   font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   font-size: 0.88rem;
   font-weight: 400;

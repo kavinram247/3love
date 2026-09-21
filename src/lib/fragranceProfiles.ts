@@ -23,12 +23,12 @@ const COLLABORATION = 'Exclusively curated by 3V-L0V3 in collaboration with Frag
 
 export const fragranceProfiles: Record<string, FragranceProfile> = {
   'stars-in-sanremo': {
-    concentration: '35% Extrait de Parfum',
+    concentration: '30% Extrait de Parfum',
     lede: 'A flower garden beneath a velvet sky.',
     body: 'Rich hibiscus blooms through the night, softened by warm amber, tonka and deep vanilla. Floral at its heart, dark and velvety beneath — the sweetness lingers like stars that refuse to disappear.',
     composition: [
       { text: 'Composed at ' },
-      { text: '35% concentration with premium perfume oils and rich floral extracts', strong: true },
+      { text: '30% concentration with premium perfume oils and rich floral extracts', strong: true },
       { text: ', carefully balanced for depth, diffusion and a lingering presence on skin.' },
     ],
     collaboration: COLLABORATION,
@@ -37,12 +37,12 @@ export const fragranceProfiles: Record<string, FragranceProfile> = {
   },
 
   'garden-of-eve': {
-    concentration: '35% Extrait de Parfum',
+    concentration: '30% Extrait de Parfum',
     lede: 'A garden caught between purity and temptation.',
     body: 'Radiant citrus opens into soft florals, rare woods, warm amber and a deep veil of tonka and vanilla. Bright at first, darker as it settles — like daylight slowly disappearing behind the garden.',
     composition: [
       { text: 'Composed with a ' },
-      { text: '35% concentration of premium perfume oils', strong: true },
+      { text: '30% concentration of premium perfume oils', strong: true },
       { text: ', selected for depth, richness and longevity.' },
     ],
     collaboration: COLLABORATION,
@@ -52,12 +52,12 @@ export const fragranceProfiles: Record<string, FragranceProfile> = {
 
   'mediterranean-breeze': {
     timeMark: '18:16',
-    concentration: '35% Extrait de Parfum',
+    concentration: '30% Extrait de Parfum',
     lede: 'The Mediterranean caught at 18:16.',
     body: 'Golden warmth meets the brightness of coastal air — rich spice, smooth woods and oud lifted by luminous citrus. It opens radiant and alive, before settling into something warmer, deeper and quietly addictive.',
     composition: [
       { text: 'Composed at ' },
-      { text: '35% concentration with premium perfume oils', strong: true },
+      { text: '30% concentration with premium perfume oils', strong: true },
       { text: ', carefully balanced for richness, projection and a lasting evolution on skin.' },
     ],
     collaboration: COLLABORATION,

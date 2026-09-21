@@ -125,8 +125,8 @@ a:active {
   align-items: end;
   padding: clamp(132px, 14vw, 210px) clamp(20px, 7vw, 110px) clamp(56px, 7vw, 112px);
   background:
-    linear-gradient(90deg, rgba(5, 2, 8, 0.98), rgba(5, 2, 8, 0.64) 44%, rgba(5, 2, 8, 0.92)),
-    linear-gradient(180deg, rgba(5, 2, 8, 0.08), rgba(5, 2, 8, 0.9)),
+    linear-gradient(90deg, rgba(5, 2, 8, 0.98), rgba(5, 2, 8, 0.72) 44%, rgba(5, 2, 8, 0.93)),
+    linear-gradient(180deg, rgba(5, 2, 8, 0.18), rgba(5, 2, 8, 0.9)),
     url('/assets/rotation/3love-rotation-cosmic-drift-4k-poster.jpg') center / cover no-repeat;
   opacity: 1;
   transform: translate3d(0, 0, 0);
@@ -214,6 +214,7 @@ a:active {
 }
 
 .brand-gateway-copy {
+  min-width: 0;
   max-width: 1120px;
 }
 
@@ -232,6 +233,30 @@ a:active {
   letter-spacing: 0;
   line-height: 0.86;
   text-wrap: balance;
+}
+
+.brand-title em {
+  display: block;
+  color: rgba(224, 170, 255, 0.88);
+  font-style: italic;
+}
+
+.brand-title-system {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 0.8vw, 12px);
+  margin-top: clamp(22px, 3vw, 40px);
+  font-family: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(1.5rem, 3.1vw, 3.1rem);
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.brand-title-accent {
+  color: rgba(224, 170, 255, 0.88);
+  font-weight: 800;
 }
 
 .brand-gateway-copy > p:not(.micro-label) {
@@ -530,12 +555,10 @@ a:active {
 .quiet-link,
 .entry-field,
 .scene-field,
-.phase-one-codes,
 .artifact-screen-chrome,
 .artifact-spec,
 .artifact-controls,
-.film-frames figcaption,
-.final-panel footer {
+.film-frames figcaption {
   font-family: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.24em;
@@ -563,6 +586,13 @@ a:active {
   background: rgba(9, 4, 14, 0.7);
   box-shadow: inset 0 1px 0 rgba(247, 242, 255, 0.08);
   backdrop-filter: blur(22px);
+  transition: transform 420ms var(--ease-out-quint), opacity 420ms var(--ease-out-quint);
+}
+
+.cinema-nav.is-hidden {
+  transform: translateX(-50%) translateY(-140%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .brand-lockup {
@@ -635,6 +665,37 @@ a:active {
   align-items: center;
   justify-self: end;
   gap: 8px;
+}
+
+.nav-social {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-social a {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(247, 242, 255, 0.1);
+  border-radius: 999px;
+  color: rgba(247, 242, 255, 0.62);
+  transition:
+    color 320ms var(--ease-out-quint),
+    border-color 320ms var(--ease-out-quint),
+    background 320ms var(--ease-out-quint);
+}
+
+.nav-social a:hover {
+  color: var(--ink);
+  border-color: rgba(224, 170, 255, 0.4);
+  background: rgba(247, 242, 255, 0.07);
+}
+
+.nav-social svg {
+  width: 15px;
+  height: 15px;
 }
 
 .cart-trigger {
@@ -795,7 +856,7 @@ a:active {
   position: relative;
   display: grid;
   min-height: 100svh;
-  padding: clamp(112px, 13vw, 190px) clamp(20px, 7vw, 110px);
+  padding: clamp(24px, 3vw, 48px) clamp(20px, 7vw, 110px);
   scroll-margin-top: 96px;
   opacity: 0;
   transform: translate3d(0, 54px, 0);
@@ -812,25 +873,17 @@ a:active {
   filter: blur(0);
 }
 
-.hero-panel {
-  align-content: center;
-  max-width: 1080px;
-}
-
 .micro-label {
   margin: 0 0 26px;
   font-size: clamp(9px, 0.9vw, 11px);
   color: rgba(224, 170, 255, 0.7);
 }
 
-.hero-panel h2,
 .copy-block h2,
 .transition-copy h2,
 .phase-one-panel h2,
-.artifact-theater-heading h2,
 .memory-panel h2,
-.product-heading h2,
-.final-panel h2 {
+.product-heading h2 {
   margin: 0;
   max-width: 980px;
   font-family: var(--font-cormorant), Georgia, serif;
@@ -840,25 +893,10 @@ a:active {
   text-wrap: balance;
 }
 
-.hero-panel h2 {
-  font-size: clamp(4.8rem, 14vw, 14rem);
-  letter-spacing: -0.035em;
-}
-
-.hero-panel h2 span,
 .phase-one-panel h2 span,
-.memory-panel h2 span,
-.final-panel h2 span {
+.memory-panel h2 span {
   display: block;
   color: rgba(224, 170, 255, 0.88);
-}
-
-.hero-copy {
-  max-width: 540px;
-  margin: 34px 0 0;
-  color: rgba(247, 242, 255, 0.6);
-  font-size: clamp(1rem, 1.45vw, 1.35rem);
-  line-height: 1.8;
 }
 
 .cinema-button {
@@ -902,6 +940,59 @@ a:active {
 .cinema-button:hover i {
   transform: translate3d(3px, -1px, 0);
   background: rgba(157, 114, 255, 0.38);
+}
+
+.site-footer {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 28px clamp(20px, 7vw, 110px) 34px;
+  border-top: 1px solid rgba(247, 242, 255, 0.1);
+  background: var(--void);
+}
+
+.site-footer-brand {
+  color: rgba(247, 242, 255, 0.42);
+  font-family: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.site-footer-social {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.site-footer-social a {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(247, 242, 255, 0.14);
+  border-radius: 999px;
+  color: rgba(247, 242, 255, 0.62);
+  transition:
+    color 320ms var(--ease-out-quint),
+    border-color 320ms var(--ease-out-quint),
+    transform 320ms var(--ease-out-quint);
+}
+
+.site-footer-social a:hover {
+  color: var(--ink);
+  border-color: rgba(224, 170, 255, 0.5);
+  transform: translate3d(0, -2px, 0);
+}
+
+.site-footer-social svg {
+  width: 18px;
+  height: 18px;
 }
 
 .cart-backdrop {
@@ -1429,6 +1520,7 @@ a:active {
 }
 
 .copy-block {
+  min-width: 0;
   max-width: 590px;
 }
 
@@ -1436,22 +1528,21 @@ a:active {
   max-width: 470px;
 }
 
-.copy-block h2,
 .transition-copy h2,
 .phase-one-panel h2,
-.artifact-theater-heading h2,
-.product-heading h2,
-.final-panel h2 {
+.product-heading h2 {
   font-size: clamp(3.1rem, 8vw, 8.4rem);
+}
+
+.copy-block h2 {
+  font-size: clamp(1.1rem, 8vw, 6.4rem);
 }
 
 .copy-block p:not(.micro-label),
 .transition-copy p:not(.micro-label),
 .phase-one-panel > p,
-.artifact-theater-heading p:not(.micro-label),
 .product-heading p:not(.micro-label),
 .memory-panel p,
-.final-panel p:not(.micro-label),
 .media-panel .copy-block p:not(.micro-label) {
   margin: 26px 0 0;
   max-width: 620px;
@@ -1594,11 +1685,3 @@ a:active {
   display: none;
 }
 
-/* Blank stretch of the film. No content and no reveal animation — just scroll
-   length, so the bottle rotates uninterrupted behind it. Matches the height the
-   four scenes and two transition panels used to occupy. */
-.story-spacer {
-  min-height: 100svh;
-  pointer-events: none;
-  scroll-margin-top: 96px;
-}
