@@ -33,3 +33,6 @@ graphify-out/
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# local notes (machine-specific, not for the repo)
+/vastos.md
