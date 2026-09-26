@@ -933,7 +933,7 @@
 
 .note-line p {
   margin: 0 0 10px;
-  color: var(--ink);
+  color: rgba(247, 242, 255, 0.8);
   font-family: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
   font-size: 1rem;
   font-weight: 800;
