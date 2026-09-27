@@ -41,9 +41,9 @@ type CheckoutState = {
 }
 
 const noteStack = [
-  { tier: 'Top', label: 'Trigger', copy: 'The first version: volatile, immediate, and emotionally charged.', examples: 'Bergamot, Citrus, Ozone' },
-  { tier: 'Heart', label: 'Sequence', copy: 'The experience layer: the identity of the composition as the first signal evolves.', examples: 'Rose, Jasmine, Iris' },
-  { tier: 'Base', label: 'Imprint', copy: 'The memory anchor: warm, slow, and designed to remain.', examples: 'Oud, Sandalwood, Ambergris' },
+  { tier: 'Top', label: 'Trigger', copy: 'The first version: volatile, immediate, and emotionally charged.' },
+  { tier: 'Heart', label: 'Sequence', copy: 'The experience layer: the identity of the composition as the first signal evolves.' },
+  { tier: 'Base', label: 'Imprint', copy: 'The memory anchor: warm, slow, and designed to remain.' },
 ]
 
 function clamp(value: number, min: number, max: number) {
@@ -907,7 +907,6 @@ export default function CinematicScrollExperience({
                   <div>
                     <p>{note.tier} <small>{note.label}</small></p>
                     <strong>{note.copy}</strong>
-                    <em>{note.examples}</em>
                   </div>
                 </div>
               ))}
