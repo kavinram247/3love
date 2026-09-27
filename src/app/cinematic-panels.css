@@ -941,7 +941,7 @@
 
 .note-line strong {
   display: block;
-  color: var(--ink-muted);
+  color: rgba(247, 242, 255, 0.42);
   font-weight: 400;
   line-height: 1.6;
 }
